@@ -1,0 +1,23 @@
+{
+  "name": "mandate-root",
+  "version": "1.0.0",
+  "description": "Mandate Bounded Economic Authority for Autonomous AI Agents",
+  "scripts": {
+    "web": "npm --prefix app run web",
+    "start": "npm --prefix app run start",
+    "test": "node app/scripts/test_app_services.js",
+    "audit": "node app/scripts/check_all_balances_and_paymaster.js"
+  },
+  "keywords": [
+    "ai-agents",
+    "arc-network",
+    "the-graph",
+    "world-id",
+    "erc4337",
+    "account-abstraction",
+    "usdc",
+    "micropayments"
+  ],
+  "author": "",
+  "license": "MIT"
+}

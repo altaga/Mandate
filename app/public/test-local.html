@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>IDKit Test</title>
+  <script src="https://unpkg.com/@worldcoin/idkit-standalone/build/index.global.js"></script>
+</head>
+<body>
+  <button id="test-btn">Test IDKit</button>
+  <script>
+    document.getElementById('test-btn').addEventListener('click', async () => {
+      try {
+        console.log("Fetching signature...");
+        const res = await fetch('/api/sign');
+        const rpContext = await res.json();
+        console.log("RP Context:", rpContext);
+
+        IDKit.init({
+          app_id: window.WORLD_APP_ID || "app_YOUR_APP_ID",
+          action: "face-auth-checkout",
+          environment: "staging",
+          rp_context: rpContext,
+          allow_legacy_proofs: true,
+          onSuccess: result => console.log("Success", result),
+          onError: err => console.error("IDKit Error", err)
+        });
+        
+        IDKit.open();
+      } catch (err) {
+        console.error("Fetch error:", err);
+      }
+    });
+  </script>
+</body>
+</html>

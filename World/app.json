@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "world-id-blueprint",
+    "slug": "world-id-blueprint",
+    "version": "1.0.0",
+    "scheme": "world-id-blueprint",
+    "platforms": ["web"],
+    "web": {
+      "bundler": "metro",
+      "output": "server"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

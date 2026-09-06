@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IDKit Isolation Test</title>
+  <script src="https://unpkg.com/@worldcoin/idkit-standalone/build/index.global.js"></script>
+  <style>
+    body { background: #090C10; color: #fff; font-family: monospace; text-align: center; padding: 50px; }
+    button { padding: 15px 30px; background: #FF3366; color: white; border: none; cursor: pointer; }
+    #log { margin-top: 20px; white-space: pre-wrap; text-align: left; background: #111; padding: 20px; }
+  </style>
+</head>
+<body>
+  <h1>IDKit Verification Test</h1>
+  <button onclick="testIDKit()">Test IDKit</button>
+  <div id="log"></div>
+
+  <script>
+    function log(msg) {
+      document.getElementById('log').innerText += msg + '\n';
+      console.log(msg);
+    }
+
+    async function testIDKit() {
+      try {
+        const appId = window.WORLD_APP_ID;
+        if (!appId) {
+          log('Set window.WORLD_APP_ID before running this test.');
+          return;
+        }
+
+        log('Fetching /api/sign...');
+        const res = await fetch('/api/sign');
+        const rpContext = await res.json();
+        if (!rpContext.signature) {
+          log('Sign failed: ' + (rpContext.error || 'unknown'));
+          return;
+        }
+
+        log('Initializing IDKit...');
+        IDKit.init({
+          app_id: appId,
+          action: rpContext.action || 'face-auth-checkout',
+          verification_level: 'device',
+          allow_legacy_proofs: true,
+          rp_context: rpContext,
+          onSuccess: (res) => log('SUCCESS: ' + JSON.stringify(res)),
+          onError: (err) => log('ERROR: ' + (err.message || err))
+        });
+        log('Opening IDKit modal...');
+        IDKit.open();
+      } catch (err) {
+        log('CATCH ERROR: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

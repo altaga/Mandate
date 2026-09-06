@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World ID Selfie Check - Isolation Test</title>
+  
+  <!-- Official Worldcoin Standalone Script (Bypasses all React/Metro build issues) -->
+  <script src="https://unpkg.com/@worldcoin/idkit-standalone/build/index.global.js"></script>
+  
+  <style>
+    body {
+      background-color: #090C10;
+      color: #F8FAFC;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 40px;
+      text-align: center;
+      background-color: #11161F;
+    }
+    button {
+      background-color: #FF3366;
+      color: #FFF;
+      border: none;
+      padding: 16px 32px;
+      font-size: 14px;
+      font-weight: bold;
+      font-family: monospace;
+      cursor: pointer;
+      margin-top: 24px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    button:hover {
+      background-color: #FF5C77;
+    }
+    #status {
+      margin-top: 20px;
+      color: #00E699;
+      font-weight: bold;
+      word-break: break-all;
+      max-width: 400px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2 style="margin-top: 0;">MANDATE // WORLD ID TEST</h2>
+    <p style="color: #94A3B8; margin-bottom: 30px;">
+      Pure vanilla JS isolation test.<br>
+      This will generate a secure WalletConnect QR code<br>
+      that you can scan to trigger the Selfie Check.
+    </p>
+
+    <button onclick="triggerSelfieCheck()">Launch Selfie Check</button>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    async function triggerSelfieCheck() {
+      document.getElementById('status').innerText = "Fetching security signature...";
+      
+      let rpContext;
+      try {
+        const response = await fetch('/api/sign');
+        rpContext = await response.json();
+        
+        if (rpContext.error) {
+          throw new Error(rpContext.error);
+        }
+      } catch (e) {
+        document.getElementById('status').innerText = "ERROR fetching signature: " + e.message;
+        document.getElementById('status').style.color = "#FF3366";
+        return;
+      }
+
+      // Initialize IDKit natively with the signed payload
+      IDKit.init({
+        app_id: window.WORLD_APP_ID || 'app_YOUR_APP_ID',
+        action: 'face-auth-checkout', // The action set up in dev portal
+        verification_level: 'device', // SDK string enum for Device/Selfie
+        allow_legacy_proofs: true, // Force 3.0 legacy logic
+        rp_context: rpContext, // THE NEW WORLD ID 4.0 SIGNATURE!
+        onSuccess: function(result) {
+          console.log("Proof received!", result);
+          document.getElementById('status').innerText = "SUCCESS! Proof received:\n" + JSON.stringify(result, null, 2);
+        },
+        onError: function(error) {
+          console.error("Error:", error);
+          document.getElementById('status').innerText = "ERROR: " + error.message;
+          document.getElementById('status').style.color = "#FF3366";
+        }
+      });
+
+      // Open the modal
+      IDKit.open();
+    }
+  </script>
+
+</body>
+</html>

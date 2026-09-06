@@ -134,3 +134,45 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# External references and tools
+refs/
+
+# AI Tool Traces, Agent Caches & Scratch Artifacts
+.gemini/
+.antigravity/
+.system_generated/
+.cursor/
+.windsurf/
+.copilot/
+.claude/
+.chatgpt/
+.cline/
+.roo/
+.aide/
+.vibe/
+brain/
+scratch/
+
+# Cloudflare Workers Secrets & Deploy
+.dev.vars
+.dev.vars.*
+.wrangler/
+.wrangler.toml.local
+wrangler.toml
+
+# Per-user internal planning / AI-specific handoff documents
+AGENT_HANDOFF.md
+GPT_CORE.MD
+
+# Hidden local documentation (not committed)
+Docs-h/
+
+# Temporary bundled / build artifacts
+temp-*.js
+temp-*.mjs
+dist-*.js
+
+# Expo local environments
+**/.expo/
+**/web-build/
