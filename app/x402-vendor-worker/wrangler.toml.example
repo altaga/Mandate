@@ -1,0 +1,11 @@
+name = "mandate-x402-cloudburst"
+main = "index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Secrets (set via wrangler secret put — never commit here):
+#   X402_GATEWAY_KEY
+#   RED_TEAM_BYPASS_KEY (optional)
+#   MINIMAX_API_KEY (optional — enables real inference workload)
+#   MINIMAX_BASE_URL (optional)
+#   GRAPH_API_KEY (optional — enables real Graph queries)

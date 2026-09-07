@@ -45,10 +45,10 @@ export class ArcService {
           formatted: `$${usdc} USDC`
         };
       }
-      return { usdcAmount: 0, formatted: '$0.00 USDC' };
+      return { usdcAmount: 0, formatted: '$0.00 USDC', error: 'Empty RPC result' };
     } catch (err) {
       console.warn('[ARC_SERVICE] RPC balance query error:', err.message);
-      return { usdcAmount: 309.15, formatted: '$309.15 USDC (Cached)' };
+      return { usdcAmount: 0, formatted: '$0.00 USDC', error: err.message };
     }
   }
 
@@ -159,5 +159,53 @@ export class ArcService {
       console.error('[ArcService] Real Onchain Paymaster execution failed:', apiError);
       throw apiError;
     }
+  }
+
+  /**
+   * Pays a vendor directly from the agent's own prepaid spend account
+   * (server-side MANDATE_AGENT_PRIVATE_KEY) — for autonomous agent-initiated
+   * vendor/infra payments, as opposed to executePayment() which signs on
+   * behalf of an enrolled biometric POS customer.
+   */
+  static async executeAgentPayment({ vendorWallet, amountUsdc, itemDescription }) {
+    try {
+      const response = await fetch('/api/payment/agent-pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendorWallet, amountUsdc, itemDescription })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Arc agent payment failed: ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (apiError) {
+      console.error('[ArcService] Agent-funded payment failed:', apiError);
+      throw apiError;
+    }
+  }
+
+  static async fetchMandateBalances() {
+    const response = await fetch('/api/treasury/balances');
+    const data = await response.json();
+    if (!response.ok) {
+      return { error: data.error || 'Failed to read treasury and agent balances' };
+    }
+    return data;
+  }
+
+  static async grantFromTreasury(amountUsdc) {
+    const response = await fetch('/api/treasury/grant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amountUsdc })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Treasury grant transaction failed');
+    }
+    return data;
   }
 }

@@ -21,15 +21,25 @@ function init() {
   console.log('=== GENERATING FRESH PRODUCTION KEYPAIRS & WALLETS ===');
 
   const buyer = generateWallet();
+  const treasury = generateWallet();
+  const agent = generateWallet();
   const merchant = generateWallet();
   const paymaster = generateWallet();
 
   const envContent = `# Mandate Production / Testnet Wallet Environment Keys
 # Generated At: ${new Date().toISOString()}
 
-# Buyer Account (Elena Rostova / Enrolled User Profile)
+# Buyer Account (Elena Rostova / Enrolled User Profile — POS only)
 MANDATE_BUYER_ADDRESS=${buyer.address}
 MANDATE_BUYER_PRIVATE_KEY=${buyer.privateKey}
+
+# Treasury Account (Mandate agent vault — NOT the POS buyer)
+MANDATE_TREASURY_ADDRESS=${treasury.address}
+MANDATE_TREASURY_PRIVATE_KEY=${treasury.privateKey}
+
+# Agent Spend Account (prepaid Mandate card — receives native USDC grants)
+MANDATE_AGENT_ADDRESS=${agent.address}
+MANDATE_AGENT_PRIVATE_KEY=${agent.privateKey}
 
 # Merchant Account (Echo Soundstage Official Merch Storefront)
 MANDATE_MERCHANT_ADDRESS=${merchant.address}
@@ -49,8 +59,10 @@ ARC_CHAIN_ID=5042002
 
   console.log('Fresh Wallets Generated & Saved to app/.env:');
   console.log('1. BUYER ADDRESS:    ', buyer.address);
-  console.log('2. MERCHANT ADDRESS: ', merchant.address);
-  console.log('3. PAYMASTER ADDRESS:', paymaster.address);
+  console.log('2. TREASURY ADDRESS: ', treasury.address);
+  console.log('3. AGENT ADDRESS:    ', agent.address);
+  console.log('4. MERCHANT ADDRESS: ', merchant.address);
+  console.log('5. PAYMASTER ADDRESS:', paymaster.address);
   console.log('\n.env file created successfully and secure!');
 }
 

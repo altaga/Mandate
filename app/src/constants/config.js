@@ -50,7 +50,9 @@ export const CONFIG = {
     RPC_URL: getEnv('ARC_RPC_URL', true, 'Required for Arc Testnet RPC connectivity.'),
     
     // Settlement Accounts strictly sourced from environment
-    DEFAULT_BUYER_ADDRESS: getEnv('MANDATE_BUYER_ADDRESS', true, 'Required for agent buyer wallet telemetry.'),
+    DEFAULT_BUYER_ADDRESS: getEnv('MANDATE_BUYER_ADDRESS', true, 'Required for POS buyer wallet telemetry.'),
+    TREASURY_ADDRESS: getEnv('MANDATE_TREASURY_ADDRESS', true, 'Required for Mandate agent treasury vault.'),
+    AGENT_ADDRESS: getEnv('MANDATE_AGENT_ADDRESS', false, 'Mandate prepaid spending wallet that receives treasury grants.'),
     MERCHANT_CONTRACT: getEnv('MANDATE_MERCHANT_ADDRESS', true, 'Required for merchant settlement.'),
     PAYMASTER_ADDRESS: getEnv('MANDATE_PAYMASTER_ADDRESS', true, 'Required for ERC-4337 gas sponsorship.'),
     

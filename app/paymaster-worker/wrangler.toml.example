@@ -1,0 +1,24 @@
+name = "mandate-x402-paymaster"
+main = "index.js"
+compatibility_date = "2024-03-04"
+
+# -----------------------------------------------------------------------------
+# SECURITY NOTICE
+# -----------------------------------------------------------------------------
+# Never put secrets in this [vars] section. Vars are committed to the deployed
+# Worker as PLAINTEXT environment variables visible in the Cloudflare dashboard.
+#
+# Inject secrets using one of these methods:
+#
+#   1. Cloudflare Secrets API (RECOMMENDED for production):
+#      npx wrangler secret put MANDATE_PAYMASTER_PRIVATE_KEY
+#      npx wrangler secret put MANDATE_BUYER_PRIVATE_KEY
+#
+#   2. Local dev only: create a .dev.vars file next to this (gitignored):
+#      MANDATE_PAYMASTER_PRIVATE_KEY=0x...
+#      MANDATE_BUYER_PRIVATE_KEY=0x...
+# -----------------------------------------------------------------------------
+
+# [vars]
+# Non-sensitive, public configuration only.
+# Example: LOG_LEVEL = "info"

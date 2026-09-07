@@ -35,8 +35,8 @@ export default function LandingPage() {
         {/* Action Buttons */}
         <View style={styles.actionGroup}>
           <ActionButton 
-            title="Mission Control Demo" 
-            subtitle="Live Agent Telemetry & Infrastructure Scaling"
+            title="Mission Control" 
+            subtitle="Treasury grants and bounded agent spend"
             icon={<Terminal size={20} color="#FFFFFF" />}
             onPress={() => router.push("/(screens)/demo-chat")}
             isPrimary={false}

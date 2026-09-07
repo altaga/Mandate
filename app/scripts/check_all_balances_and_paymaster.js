@@ -66,6 +66,12 @@ async function auditAll() {
     process.exit(1);
   }
 
+  const treasury = process.env.MANDATE_TREASURY_ADDRESS;
+  if (!treasury) {
+    console.error("❌ Configuration Error: Missing required environment variable MANDATE_TREASURY_ADDRESS in app/.env");
+    process.exit(1);
+  }
+
   const merch = process.env.MANDATE_MERCHANT_ADDRESS;
   if (!merch) {
     console.error("❌ Configuration Error: Missing required environment variable MANDATE_MERCHANT_ADDRESS in app/.env");
@@ -97,13 +103,23 @@ async function auditAll() {
     console.log(`   - Live USDC Balance: ${buyerUsdc} USDC (${buyerBalHex})`);
     console.log(`   - Transaction Nonce: ${buyerNonce} (Freshly Generated Keypair)\n`);
 
-    // 2. Merchant Balance & Nonce
+    // 2. Treasury Balance & Nonce
+    const treasuryBalHex = await rpcCall('eth_getBalance', [treasury, 'latest']);
+    const treasuryNonceHex = await rpcCall('eth_getTransactionCount', [treasury, 'latest']);
+    const treasuryWei = BigInt(treasuryBalHex);
+    const treasuryUsdc = (Number(treasuryWei) / 1e18).toFixed(6);
+    const treasuryNonce = parseInt(treasuryNonceHex, 16);
+    console.log(`2. TREASURY ACCOUNT (${treasury}):`);
+    console.log(`   - Live USDC Balance: ${treasuryUsdc} USDC (${treasuryBalHex})`);
+    console.log(`   - Transaction Nonce: ${treasuryNonce}\n`);
+
+    // 3. Merchant Balance & Nonce
     const merchBalHex = await rpcCall('eth_getBalance', [merch, 'latest']);
     const merchNonceHex = await rpcCall('eth_getTransactionCount', [merch, 'latest']);
     const merchWei = BigInt(merchBalHex);
     const merchUsdc = (Number(merchWei) / 1e18).toFixed(6);
     const merchNonce = parseInt(merchNonceHex, 16);
-    console.log(`2. FRESH MERCHANT ACCOUNT (${merch}):`);
+    console.log(`3. FRESH MERCHANT ACCOUNT (${merch}):`);
     console.log(`   - Live USDC Balance: ${merchUsdc} USDC (${merchBalHex})`);
     console.log(`   - Transaction Nonce: ${merchNonce} (Freshly Generated Keypair)\n`);
 
@@ -113,7 +129,7 @@ async function auditAll() {
     const pmWei = BigInt(pmBalHex);
     const pmUsdc = (Number(pmWei) / 1e18).toFixed(6);
     const pmNonce = parseInt(pmNonceHex, 16);
-    console.log(`3. FRESH FACILITATOR / PAYMASTER ACCOUNT (${paymaster}):`);
+    console.log(`4. FRESH FACILITATOR / PAYMASTER ACCOUNT (${paymaster}):`);
     console.log(`   - Live USDC Balance: ${pmUsdc} USDC (${pmBalHex})`);
     console.log(`   - Transaction Nonce: ${pmNonce} (Freshly Generated Keypair)\n`);
 
