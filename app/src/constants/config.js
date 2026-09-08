@@ -52,7 +52,10 @@ export const CONFIG = {
     // Settlement Accounts strictly sourced from environment
     DEFAULT_BUYER_ADDRESS: getEnv('MANDATE_BUYER_ADDRESS', true, 'Required for POS buyer wallet telemetry.'),
     TREASURY_ADDRESS: getEnv('MANDATE_TREASURY_ADDRESS', true, 'Required for Mandate agent treasury vault.'),
+    TREASURY_OWNER_ADDRESS: getEnv('MANDATE_TREASURY_OWNER_ADDRESS', false, 'Owner EOA of the treasury ERC-4337 smart account.'),
     AGENT_ADDRESS: getEnv('MANDATE_AGENT_ADDRESS', false, 'Mandate prepaid spending wallet that receives treasury grants.'),
+    AGENT_OWNER_ADDRESS: getEnv('MANDATE_AGENT_OWNER_ADDRESS', false, 'Owner EOA of the agent ERC-4337 smart account.'),
+    ACCOUNT_FACTORY_ADDRESS: getEnv('ARC_ACCOUNT_FACTORY') || '0x9406Cc6185a346906296840746125a0E44976454',
     MERCHANT_CONTRACT: getEnv('MANDATE_MERCHANT_ADDRESS', true, 'Required for merchant settlement.'),
     PAYMASTER_ADDRESS: getEnv('MANDATE_PAYMASTER_ADDRESS', true, 'Required for ERC-4337 gas sponsorship.'),
     

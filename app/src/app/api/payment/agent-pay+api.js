@@ -1,11 +1,13 @@
 import { ethers } from 'ethers';
+import { sendSponsoredTransfer } from '../../../server/erc4337';
 
 /**
  * @file agent-pay+api.js
- * @description Real on-chain payment from the Mandate agent's OWN prepaid spend
- * account (MANDATE_AGENT_PRIVATE_KEY, funded by treasury/grant+api.js) directly
- * to a vendor wallet. No Supabase lookup — the agent already custodies its own
- * signing key server-side, same pattern as treasury/grant+api.js.
+ * @description Real, gas-sponsored ERC-4337 payment from the Mandate agent's
+ * OWN smart-account spend wallet (MANDATE_AGENT_ADDRESS, owned by
+ * MANDATE_AGENT_PRIVATE_KEY) to a vendor wallet. No Supabase lookup — the
+ * agent already custodies its own signing key server-side. Gas is fronted by
+ * the Paymaster Worker's own wallet, never the agent's.
  *
  * This is distinct from payment/execute+api.js, which signs on behalf of an
  * enrolled biometric POS customer (looked up in Supabase by wallet address) —
@@ -31,34 +33,35 @@ export async function POST(request) {
     }
 
     const privateKey = process.env.MANDATE_AGENT_PRIVATE_KEY;
-    const rpcUrl = process.env.ARC_RPC_URL || process.env.EXPO_PUBLIC_ARC_RPC_URL;
+    const smartAccountAddress = process.env.MANDATE_AGENT_ADDRESS || process.env.EXPO_PUBLIC_MANDATE_AGENT_ADDRESS;
     if (!privateKey) throw new Error('Missing MANDATE_AGENT_PRIVATE_KEY');
+    if (!smartAccountAddress) throw new Error('Missing MANDATE_AGENT_ADDRESS');
+
+    const rpcUrl = process.env.ARC_RPC_URL || process.env.EXPO_PUBLIC_ARC_RPC_URL;
     if (!rpcUrl) throw new Error('Missing ARC_RPC_URL');
-
     const provider = new ethers.JsonRpcProvider(rpcUrl);
-    const wallet = new ethers.Wallet(privateKey, provider);
+    const balance = await provider.getBalance(smartAccountAddress);
     const value = ethers.parseEther(amountUsdc.toFixed(6));
-    const balance = await provider.getBalance(wallet.address);
-    const fee = await provider.getFeeData();
-    const gasPrice = fee.gasPrice || fee.maxFeePerGas || 0n;
-    const gasCost = 21000n * gasPrice;
-
-    if (balance < value + gasCost) {
-      return Response.json({ error: 'Agent spend account has insufficient native USDC for this payment plus gas.' }, { status: 400 });
+    if (balance < value) {
+      return Response.json({ error: 'Agent smart account has insufficient native USDC for this payment.' }, { status: 400 });
     }
 
-    const tx = await wallet.sendTransaction({ to: vendorWallet, value });
-    const receipt = await tx.wait();
-    const txHash = receipt?.hash || tx.hash;
-    const explorerBase = (process.env.ARC_EXPLORER_URL || 'https://testnet.arcscan.app').replace(/\/$/, '');
-
-    return Response.json({
-      txHash,
-      from: wallet.address,
+    const receipt = await sendSponsoredTransfer({
+      ownerPrivateKey: privateKey,
+      smartAccountAddress,
       to: vendorWallet,
       amountUsdc,
       itemDescription,
-      explorerUrl: `${explorerBase}/tx/${txHash}`,
+    });
+
+    return Response.json({
+      txHash: receipt.txHash,
+      from: smartAccountAddress,
+      to: vendorWallet,
+      amountUsdc,
+      itemDescription,
+      gasSponsored: true,
+      explorerUrl: receipt.networkMeta?.explorerUrl,
     });
   } catch (error) {
     console.error('[AGENT_PAY]', error);

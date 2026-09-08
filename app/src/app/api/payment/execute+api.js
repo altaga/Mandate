@@ -93,7 +93,11 @@ export async function POST(request) {
 
     // 4. Hash and Sign UserOperation
     const finalHash = await entryPoint.getUserOpHash(userOp);
-    userOp.signature = agentOwner.signingKey.sign(finalHash).serialized;
+    // SimpleAccount's _validateSignature wraps the hash with the EIP-191
+    // personal-sign prefix (toEthSignedMessageHash()) before recovering the
+    // signer — signing the raw hash directly fails validation with "AA24
+    // signature error" even though the key is correct.
+    userOp.signature = await agentOwner.signMessage(ethers.getBytes(finalHash));
 
     // Convert BigInts to strings for JSON payload
     const serializedUserOp = {
