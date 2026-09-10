@@ -1,6 +1,6 @@
 const ALLOWED_ORIGINS = [
-  "https://YOUR_WEBSITE_URL.com", 
-  "http://localhost:8081" 
+  "https://mandate.expo.app",
+  "http://localhost:8081"
 ];
 
 export function isAllowedOrigin(request) {

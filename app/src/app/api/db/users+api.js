@@ -1,52 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
-
-const getSupabase = () => {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
-    throw new Error("[Configuration Error] Missing required environment variable: SUPABASE_URL or SUPABASE_SECRET_KEY. Please set them in app/.env");
-  }
-  // Service-role key: this route reads/writes agent_key (a real private key)
-  // and biometric face_vector data for every enrolled user. The anon key must
-  // never have access to this table once RLS is enabled — see enrolled_users
-  // RLS policy.
-  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
-};
+// Service-role key: this route reads/writes agent_key (a real private key)
+// and biometric face_vector data for every enrolled user. The anon key must
+// never have access to this table once RLS is enabled — see enrolled_users
+// RLS policy.
+import { getSupabaseAdmin, getAllEnrolledUsersFromDb } from '../../../utilsAPI/enrolledUsersAdmin.js';
 
 export async function GET(request) {
   try {
-    const supabase = getSupabase();
-
-    const { data, error } = await supabase
-      .from('enrolled_users')
-      .select('*')
-      .order('enrolled_at', { ascending: false });
-
-    if (error) throw error;
-
-    const formattedUsers = (data || []).map(r => {
-      let vectorArray = [];
-      try {
-        if (typeof r.face_vector === 'string') {
-          vectorArray = JSON.parse(r.face_vector);
-        } else if (Array.isArray(r.face_vector)) {
-          vectorArray = r.face_vector;
-        }
-      } catch (e) {
-        console.error('Failed to parse vector for user', r.id);
-      }
-
-      return {
-        id: r.id,
-        name: r.name,
-        email: r.email,
-        walletAddress: r.wallet_address,
-        agentKey: r.agent_key,
-        worldNullifier: r.world_nullifier,
-        faceVector: vectorArray,
-        enrolledAt: r.enrolled_at
-      };
-    });
-
-    return Response.json({ success: true, users: formattedUsers });
+    const users = await getAllEnrolledUsersFromDb();
+    return Response.json({ success: true, users });
   } catch (error) {
     console.error('Supabase GET Error:', error);
     return Response.json({ success: false, error: error.message }, { status: 500 });
@@ -55,13 +16,9 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
     const profile = await request.json();
 
-    if (!supabase) {
-      return Response.json({ success: true, localOnly: true });
-    }
-    
     const vectorString = `[${(profile.faceVector || []).join(',')}]`;
 
     const { error } = await supabase
