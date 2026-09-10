@@ -54,8 +54,9 @@ export const EnrollmentScreen = ({ onEnrollSuccess }) => {
         }
       }
 
-      // 2. Init World ID
-      const res = await fetch('/api/sign');
+      // 2. Init World ID — fixed "recognition" action so this person's nullifier_hash
+      // is deterministic and can be matched again on a future World ID login.
+      const res = await fetch('/api/sign?purpose=recognition');
       if (!res.ok) throw new Error('Failed to fetch signature');
       const data = await res.json();
       if (data.signature) {

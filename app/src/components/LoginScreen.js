@@ -21,7 +21,9 @@ export function LoginScreen({ onLoginSuccess, onGoToSignUp }) {
     setMethod('world');
     setError(null);
     try {
-      const res = await fetch('/api/sign');
+      // Fixed "recognition" action — must match the one used at enrollment so this
+      // person's nullifier_hash is identical and enrolled_users.world_nullifier resolves.
+      const res = await fetch('/api/sign?purpose=recognition');
       if (!res.ok) throw new Error('Failed to fetch signature');
       const data = await res.json();
       if (data.signature) {

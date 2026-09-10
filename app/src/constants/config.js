@@ -27,6 +27,12 @@ export const CONFIG = {
     RP_ID: getEnv('WORLD_RP_ID', false),
     ACTION: getEnv('WORLD_ACTION', false) || 'face-auth-checkout',
     HIGH_VALUE_ACTION: getEnv('WORLD_HIGH_VALUE_ACTION', false) || 'mandate-high-value-checkout',
+    // Fixed (never timestamped) action used ONLY for enrollment + login. The nullifier_hash for
+    // a given person is deterministic per (person, action) — checkout intentionally timestamps
+    // its action per attempt (so nullifier reuse can't be mistaken for double-spend), but that
+    // means it can never be used to recognize a returning person. This one must stay identical
+    // across every enrollment/login call so enrolled_users.world_nullifier can be looked up again.
+    RECOGNITION_ACTION: getEnv('WORLD_RECOGNITION_ACTION', false) || 'mandate-user-recognition',
     // "production" | "staging" | "sandbox" — see World ID Sandbox docs. Requires the Sandbox
     // World App build (TestFlight / Play testing track), not the public World App.
     ENVIRONMENT: getEnv('WORLD_ENVIRONMENT', false) || 'sandbox',

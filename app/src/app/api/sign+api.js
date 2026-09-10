@@ -1,6 +1,6 @@
 import { signRequest } from '@worldcoin/idkit/signing';
 
-export async function GET() {
+export async function GET(request) {
   try {
     const signingKey = process.env.WORLD_SECRET_KEY;
     const rpId = process.env.WORLD_RP_ID;
@@ -12,8 +12,15 @@ export async function GET() {
       return Response.json({ error: 'WORLD_RP_ID not found in .env' }, { status: 500 });
     }
 
-    // Append timestamp to make the action dynamic (avoids "Already verified" for testing)
-    const action = `face-auth-checkout-${Date.now()}`;
+    // ?purpose=recognition → fixed action (enrollment/login), so nullifier_hash is deterministic
+    // for a given person and enrolled_users.world_nullifier can be matched on a later login.
+    // Default (checkout) keeps a timestamped action per attempt — nullifier_hash there is a
+    // per-transaction anti-replay token, not meant to be recognized/reused across attempts.
+    const { searchParams } = new URL(request.url);
+    const purpose = searchParams.get('purpose');
+    const action = purpose === 'recognition'
+      ? (process.env.WORLD_RECOGNITION_ACTION || 'mandate-user-recognition')
+      : `face-auth-checkout-${Date.now()}`;
 
     const { sig, nonce, createdAt, expiresAt } = signRequest({
       signingKeyHex: signingKey,
