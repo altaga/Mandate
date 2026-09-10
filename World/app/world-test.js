@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { IDKitRequestWidget, deviceLegacy, setDebug } from '@worldcoin/idkit';
+import { IDKitRequestWidget, selfieCheckLegacy, setDebug } from '@worldcoin/idkit';
 
 setDebug(true);
 
 const APP_ID = process.env.EXPO_PUBLIC_WORLD_APP_ID;
+const ENVIRONMENT = process.env.EXPO_PUBLIC_WORLD_ENVIRONMENT || 'sandbox';
 
 export default function WorldTestScreen() {
   const [rpContext, setRpContext] = useState(null);
@@ -66,7 +67,8 @@ export default function WorldTestScreen() {
           action={dynamicAction || 'face-auth-checkout'}
           rp_context={rpContext}
           allow_legacy_proofs={true}
-          preset={typeof deviceLegacy === 'function' ? deviceLegacy() : undefined}
+          environment={ENVIRONMENT}
+          preset={typeof selfieCheckLegacy === 'function' ? selfieCheckLegacy() : undefined}
           onError={(err) => {
             console.log('IDKit error:', err);
             setStatus(`Widget error: ${err}`);

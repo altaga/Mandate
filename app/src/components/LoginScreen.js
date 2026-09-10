@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform, ActivityIndicator } from 'react-native';
 import WebcamCapture from './WebcamCapture';
-import { IDKitRequestWidget, deviceLegacy } from '@worldcoin/idkit';
+import { IDKitRequestWidget, selfieCheckLegacy } from '@worldcoin/idkit';
 import { BiometricService } from '../services/biometricService';
 import { CONFIG } from '../constants/config';
 
@@ -168,7 +168,8 @@ export function LoginScreen({ onLoginSuccess, onGoToSignUp }) {
             action={dynamicAction}
             rp_context={rpContext}
             allow_legacy_proofs={true}
-            preset={deviceLegacy()}
+            environment={CONFIG.WORLD_ID.ENVIRONMENT}
+            preset={selfieCheckLegacy()}
             onError={(err, debugReport) => {
               console.log("IDKIT WIDGET RETURNED ERROR:", err);
               console.log("DEBUG REPORT:", JSON.stringify(debugReport, null, 2));

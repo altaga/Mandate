@@ -27,11 +27,15 @@ export const CONFIG = {
     RP_ID: getEnv('WORLD_RP_ID', false),
     ACTION: getEnv('WORLD_ACTION', false) || 'face-auth-checkout',
     HIGH_VALUE_ACTION: getEnv('WORLD_HIGH_VALUE_ACTION', false) || 'mandate-high-value-checkout',
+    // "production" | "staging" | "sandbox" — see World ID Sandbox docs. Requires the Sandbox
+    // World App build (TestFlight / Play testing track), not the public World App.
+    ENVIRONMENT: getEnv('WORLD_ENVIRONMENT', false) || 'sandbox',
     DEEP_LINK_SCHEME: 'mandate://world-callback',
     WORLD_APP_SCHEME: 'https://worldcoin.org/verify',
     VERIFICATION_LEVELS: {
       DEVICE: 'device',
-      ORB: 'orb'
+      ORB: 'orb',
+      SELFIE: 'selfie'
     }
   },
 

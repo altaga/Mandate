@@ -12,8 +12,9 @@ import { WorldService } from '../services/worldService';
 import { GraphService } from '../services/graphService';
 import { ArcService } from '../services/arcService';
 import { THEME } from '../constants/theme';
+import { CONFIG } from '../constants/config';
 import WebcamCapture from './WebcamCapture';
-import { IDKitRequestWidget, passport } from '@worldcoin/idkit';
+import { IDKitRequestWidget, selfieCheckLegacy } from '@worldcoin/idkit';
 
 export const CheckoutModal = ({ visible, item, onClose }) => {
   const { currentUser, addLog } = useMandate();
@@ -261,10 +262,12 @@ export const CheckoutModal = ({ visible, item, onClose }) => {
                     <IDKitRequestWidget
                       open={idkitOpen}
                       onOpenChange={setIdkitOpen}
-                      app_id="app_11a0069f40eddb35899a9ec904f3e441"
+                      app_id={CONFIG.WORLD_ID.APP_ID}
                       action="face-auth-checkout"
                       rp_context={rpContext}
                       allow_legacy_proofs={true}
+                      environment={CONFIG.WORLD_ID.ENVIRONMENT}
+                      preset={selfieCheckLegacy()}
                       onError={(err) => setError(`IDKit failed with error: ${err}`)}
                       onSuccess={(proof) => handleWorldProofPass(proof)}
                       handleVerify={async (proof) => {

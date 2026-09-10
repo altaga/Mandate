@@ -1,7 +1,12 @@
 # World ID Blueprint — Replication Manual
 
-> **Status:** Verified working (Expo Web + IDKit v4)  
-> **Success criteria:** IDKit modal shows QR → World App completes Selfie/Document check → UI shows `All set!` and a green `Success:` payload with `action`, `nonce`, `responses[].proof`, `nullifier`, `merkle_root`.
+> **Status:** Verified working (Expo Web + IDKit v4), now wired to **Sandbox + Selfie Check**.
+> **Success criteria:** IDKit modal shows QR → **Sandbox** World App completes **Selfie Check** →
+> UI shows `All set!` and a green `Success:` payload with `action`, `nonce`, `responses[].proof`,
+> `nullifier`, `merkle_root`, `environment: "sandbox"`.
+>
+> Requires the **Sandbox** World App build (TestFlight / Google Play private testing track) —
+> the public World App will reject a Sandbox `app_id`/`rp_id`. See §4a below.
 
 This folder is the **minimal, known-good** Expo Web integration for World ID.  
 No Mandate, Arc, Graph, biometrics, or other product code — only World ID.
@@ -148,6 +153,20 @@ Rules:
 - `WORLD_APP_ID` / `EXPO_PUBLIC_WORLD_APP_ID` must match the App ID registered in the portal.
 - Never commit `.env`.
 
+### 4a. Sandbox setup (required for Selfie Check testing)
+
+```env
+EXPO_PUBLIC_WORLD_ENVIRONMENT=sandbox   # "production" | "staging" | "sandbox"
+```
+
+1. Request Sandbox access in the World Developer Portal (Apple Account email for TestFlight,
+   or Google Play email for the private testing track) — sandbox apps aren't publicly listed.
+2. Install the **Sandbox** World App build on your phone. The regular public World App will
+   reject verification requests carrying `environment: "sandbox"`.
+3. Proofs still POST to the same endpoint (`developer.world.org/api/v4/verify/{app_id}`) —
+   Sandbox doesn't change the verify call, only the widget's `environment` prop and the app
+   build used to scan/approve.
+
 ---
 
 ## 5. Mandatory Expo / Metro config
@@ -281,7 +300,8 @@ See `app/api/verify+api.js`.
 | --- | --- |
 | Fetch sign first | Do not open the widget until `rp_context` exists |
 | Sync action | `action={dynamicAction}` must equal `data.action` from `/api/sign` |
-| Preset | Use `preset={deviceLegacy()}` — **not** `identityCheck()` (crashes in 4.2.2) |
+| Preset | Use `preset={selfieCheckLegacy()}` for Selfie Check. `deviceLegacy()` still works if you need the device-only flow. **Not** `identityCheck()` (crashes in 4.2.2) |
+| Environment | `environment={ENVIRONMENT}` (from `EXPO_PUBLIC_WORLD_ENVIRONMENT`, defaults to `"sandbox"`) |
 | Legacy proofs | `allow_legacy_proofs={true}` |
 | Errors | Use `console.log` in `onError` — Expo Web turns `console.error` into a red screen |
 | Verify | `handleVerify` must POST to `/api/verify` with `{ proof, action: dynamicAction }` |

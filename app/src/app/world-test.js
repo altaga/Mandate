@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { IDKitRequestWidget, deviceLegacy, setDebug } from '@worldcoin/idkit';
+import { IDKitRequestWidget, selfieCheckLegacy, setDebug } from '@worldcoin/idkit';
 import { CONFIG } from '../constants/config';
 
 setDebug(true);
@@ -46,7 +46,8 @@ export default function WorldTestScreen() {
           action="face-auth-checkout"
           rp_context={rpContext}
           allow_legacy_proofs={true}
-          preset={typeof deviceLegacy === 'function' ? deviceLegacy() : undefined}
+          environment={CONFIG.WORLD_ID.ENVIRONMENT}
+          preset={typeof selfieCheckLegacy === 'function' ? selfieCheckLegacy() : undefined}
           onError={(err, debugReport) => {
             console.log("IDKIT WIDGET RETURNED ERROR:", err);
             console.log("DEBUG REPORT:", JSON.stringify(debugReport, null, 2));

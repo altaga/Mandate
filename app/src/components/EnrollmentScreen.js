@@ -11,7 +11,7 @@ import { ethers } from 'ethers';
 import { useMandate } from '../providers/mandateModule';
 import { BiometricService } from '../services/biometricService';
 import { THEME } from '../constants/theme';
-import { IDKitRequestWidget, deviceLegacy } from '@worldcoin/idkit';
+import { IDKitRequestWidget, selfieCheckLegacy } from '@worldcoin/idkit';
 import { CONFIG } from '../constants/config';
 import WebcamCapture from './WebcamCapture';
 
@@ -281,7 +281,8 @@ export const EnrollmentScreen = ({ onEnrollSuccess }) => {
                 action={dynamicAction}
                 rp_context={rpContext}
                 allow_legacy_proofs={true}
-                preset={deviceLegacy()}
+                environment={CONFIG.WORLD_ID.ENVIRONMENT}
+                preset={selfieCheckLegacy()}
                 onError={(err) => {
                   console.log("Enrollment IDKit Error:", err);
                 }}

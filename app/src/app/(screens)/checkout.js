@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
-import { IDKitRequestWidget, deviceLegacy } from '@worldcoin/idkit';
+import { IDKitRequestWidget, selfieCheckLegacy } from '@worldcoin/idkit';
 import { CONFIG } from '../../constants/config';
 import WebcamCapture from '../../components/WebcamCapture';
 
@@ -278,7 +278,8 @@ export default function CheckoutScreen() {
                       action={dynamicAction}
                       rp_context={rpContext}
                       allow_legacy_proofs={true}
-                      preset={deviceLegacy()}
+                      environment={CONFIG.WORLD_ID.ENVIRONMENT}
+                      preset={selfieCheckLegacy()}
                       onError={(err) => {
                         console.log("FacePay IDKit Error:", err);
                         setPaymentStatus('idle');

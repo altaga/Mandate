@@ -12,6 +12,7 @@ import { IDKitRequestWidget, passport } from '@worldcoin/idkit';
 import { AgentService } from '../services/agentService';
 import { WorldService } from '../services/worldService';
 import { ArcService } from '../services/arcService';
+import { CONFIG } from '../constants/config';
 
 const MISSION_DURATION = 180;
 const INITIAL_BUDGET = 1.00;
@@ -475,10 +476,11 @@ export function MandateScreen() {
                       <IDKitRequestWidget
                         open={idkitOpen}
                         onOpenChange={setIdkitOpen}
-                        app_id="app_11a0069f40eddb35899a9ec904f3e441"
+                        app_id={CONFIG.WORLD_ID.APP_ID}
                         action="mandate-operator-auth"
                         rp_context={rpContext}
                         allow_legacy_proofs={true}
+                        environment={CONFIG.WORLD_ID.ENVIRONMENT}
                         preset={typeof passport === 'function' ? passport() : undefined}
                         onError={(err, debugReport) => {
                           console.log("PAGE LOG: IDKit Error Triggered!", err);
