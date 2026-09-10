@@ -2,7 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 import { ethers } from 'ethers';
 
 const getSupabase = () => {
-  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  // Service-role key: this is trusted server-side code reading agent_key
+  // (a real private key) for enrolled users. The anon key must never have
+  // access to this table once RLS is enabled — see enrolled_users RLS policy.
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 };
 
 export async function POST(request) {

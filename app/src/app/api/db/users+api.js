@@ -1,10 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
 const getSupabase = () => {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-    throw new Error("[Configuration Error] Missing required environment variable: SUPABASE_URL or SUPABASE_ANON_KEY. Please set them in app/.env");
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
+    throw new Error("[Configuration Error] Missing required environment variable: SUPABASE_URL or SUPABASE_SECRET_KEY. Please set them in app/.env");
   }
-  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  // Service-role key: this route reads/writes agent_key (a real private key)
+  // and biometric face_vector data for every enrolled user. The anon key must
+  // never have access to this table once RLS is enabled — see enrolled_users
+  // RLS policy.
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 };
 
 export async function GET(request) {
