@@ -1,13 +1,15 @@
 {
   "expo": {
     "name": "mandate",
-    "slug": "mandate",
+    "slug": "facedid",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/logo.png",
     "scheme": "mandate",
     "userInterfaceStyle": "automatic",
-    "platforms": ["web"],
+    "platforms": [
+      "web"
+    ],
     "web": {
       "output": "server",
       "favicon": "./src/assets/favicon.png"
@@ -39,6 +41,15 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": false
-    }
+    },
+    "extra": {
+      "router": {
+        "unstable_useServerMiddleware": true
+      },
+      "eas": {
+        "projectId": "83c2a5d3-e233-433b-a9fe-1de6726a61f1"
+      }
+    },
+    "owner": "altaga"
   }
 }
