@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, ActivityIndicator, Linking } from 'react-native';
 import { RefreshCw, Wallet } from 'lucide-react-native';
+import { toast } from 'react-native-sonner';
 import { CONFIG } from '../../constants/config';
+import { ArcService } from '../../services/arcService';
 
 const PRESETS = [1, 5, 10];
 
@@ -43,6 +45,19 @@ export function TreasuryTab({
       type: 'success',
       text: result.txHash ? `Tx: ${result.txHash}` : `Granted ${formatUsd(result.amount)} USDC.`
     });
+
+    // The inline feedback line above is easy to miss (it's below the fold on
+    // a real click) — a toast is the visible, unmissable confirmation that
+    // this was a real on-chain transaction, not a local counter bump.
+    if (result.txHash) {
+      toast.success(`${formatUsd(result.amount)} USDC granted on-chain`, {
+        description: `Tx: ${result.txHash.slice(0, 10)}…${result.txHash.slice(-8)}`,
+        action: {
+          label: 'View on Arcscan ↗',
+          onClick: () => Linking.openURL(ArcService.getExplorerTxUrl(result.txHash)),
+        },
+      });
+    }
   };
 
   const openExplorer = () => {

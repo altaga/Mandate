@@ -6,6 +6,8 @@
  * executed through real x402 vendor calls and real ERC-4337 payments.
  */
 
+import { toast } from 'react-native-sonner';
+import { Linking } from 'react-native';
 import { ArcService } from './arcService.js';
 import { VENDOR_CATALOG } from '../constants/vendors.js';
 
@@ -190,6 +192,16 @@ export const AgentService = {
           });
           addLog({ time: ts(), text: `💸 ${vendor.cost} USDC → ${vendor.name}`, type: 'payment' });
           addLog({ time: ts(), text: `Tx: ${receipt.txHash}`, type: 'hash' });
+          // Same reasoning as the treasury grant toast: a chat log line
+          // scrolls past easily, and this is real money moving on Arc
+          // Testnet — an unmissable, tappable confirmation matters here.
+          toast.success(`${vendor.cost} USDC → ${vendor.name}`, {
+            description: `Tx: ${receipt.txHash.slice(0, 10)}…${receipt.txHash.slice(-8)}`,
+            action: {
+              label: 'View on Arcscan ↗',
+              onClick: () => Linking.openURL(ArcService.getExplorerTxUrl(receipt.txHash)),
+            },
+          });
           if (env.onSpend) env.onSpend(vendor.cost);
           await this.invokeX402Service(vendorId, receipt.txHash);
           addLog({ time: ts(), text: `✓ ${vendor.name} — Online & serving`, type: 'success' });
