@@ -111,6 +111,14 @@ export function GlitchPanel({ lab }) {
       <Text style={styles.footer}>
         Faults are injected server-side. Chat, grants and payments run on separate routes and are never affected.
       </Text>
+
+      {glitchMode !== 'off' && (
+        <View style={styles.watchHint}>
+          <Text style={styles.watchHintText}>
+            → Switch to Agent Chat to watch the agent react: it detects the fault within a few seconds, reasons about it out loud, and pays a real on-chain sponsor to fail over. The payment itself takes ~15–20s to confirm on Arc Testnet — that's real, not a loading bug.
+          </Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -197,5 +205,14 @@ const styles = StyleSheet.create({
 
   footer: {
     color: '#2A2A2A', fontSize: 10, lineHeight: 16, fontFamily: 'monospace',
+  },
+
+  watchHint: {
+    backgroundColor: 'rgba(52,199,89,0.06)',
+    borderWidth: 1, borderColor: 'rgba(52,199,89,0.25)',
+    borderRadius: 10, padding: 12,
+  },
+  watchHintText: {
+    color: '#8FE3A6', fontSize: 11, lineHeight: 16, fontFamily: 'monospace',
   },
 });

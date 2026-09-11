@@ -136,6 +136,14 @@ export function TrafficSimulatorPanel({ lab }) {
         )}
       </View>
 
+      {running && (
+        <View style={styles.nextHint}>
+          <Text style={styles.nextHintText}>
+            → Next: open GLITCH (right edge) and inject a fault. The agent will detect it and autonomously pay a real sponsor to fail over — watch it happen in Agent Chat.
+          </Text>
+        </View>
+      )}
+
     </ScrollView>
   );
 }
@@ -262,4 +270,13 @@ const styles = StyleSheet.create({
   termPath: { color: '#6B6B6B', fontSize: 10, fontFamily: 'monospace', flex: 1 },
   termStatus: { fontSize: 10, fontFamily: 'monospace', fontWeight: '700', width: 30, textAlign: 'right' },
   termMs: { color: '#3A3A3C', fontSize: 9, fontFamily: 'monospace', width: 38, textAlign: 'right' },
+
+  nextHint: {
+    backgroundColor: 'rgba(52,199,89,0.06)',
+    borderWidth: 1, borderColor: 'rgba(52,199,89,0.25)',
+    borderRadius: 10, padding: 12,
+  },
+  nextHintText: {
+    color: '#8FE3A6', fontSize: 11, lineHeight: 16, fontFamily: 'monospace',
+  },
 });

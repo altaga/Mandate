@@ -17,7 +17,8 @@ import { InfraStatusBar } from '../../features/mandate-control/InfraStatusBar';
 import { useTrafficLab } from '../../hooks/useTrafficLab';
 
 const INITIAL_MESSAGES = [
-  { id: '1', role: 'system', text: 'SYSTEM ONLINE. I am Mandate-SRE-01.\n\nGrant native USDC from the treasury wallet to authorize my spend cap.' }
+  { id: '1', role: 'system', text: 'SYSTEM ONLINE. I am Mandate-SRE-01.\n\nGrant native USDC from the treasury wallet to authorize my spend cap.' },
+  { id: '2', role: 'system', text: "Want to see autonomous failover live? Open TRAFFIC (left edge) → Start Workers. Then open GLITCH (right edge) → inject an Error. Come back here: I'll detect it, reason about it out loud, and pay a real on-chain sponsor to fail over automatically — the payment takes ~15–20s to confirm, that's a real Arc Testnet tx, not a stall.", type: 'info' },
 ];
 
 export default function DemoChatScreen() {
