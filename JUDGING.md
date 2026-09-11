@@ -61,6 +61,44 @@ commands are included so any of this can be independently re-verified.
   step it gates.
 - Developer feedback document: [`docs/WORLD_ID_FEEDBACK.md`](docs/WORLD_ID_FEEDBACK.md).
 
+## Mission Control's traffic/failover demo: how to verify it's real
+
+Mission Control's TRAFFIC and GLITCH panels look like they could be a
+canned animation. They aren't — everything below is independently checkable
+without trusting the app's own UI.
+
+- **Real HTTP requests, not a script.** Open browser DevTools → Network tab,
+  start Traffic Simulator workers, and watch real `GET`/`POST` requests fire
+  against `/api/health`, `/api/treasury/balances`, `/api/traffic/probe` —
+  each with its own real status code and timing, because each one is.
+- **The fault is server state, not a client-side visual filter.** Set it and
+  read it back directly, no browser involved:
+  ```
+  curl -X POST https://mandate.expo.app/api/traffic/glitch -H "Content-Type: application/json" -d '{"mode":"error"}'
+  curl https://mandate.expo.app/api/traffic/glitch
+  curl https://mandate.expo.app/api/health -H "x-traffic-lab: 1"   # → real 503
+  ```
+- **State is genuinely shared server-side, not per-browser-tab.** Both the
+  Traffic Simulator's counters and the failover engine's health tracking are
+  backed by Cloudflare D1 (`src/server/trafficLabStore.js`,
+  `src/server/infraHealthStore.js`) — not an in-memory variable scoped to
+  your tab. Proof: open the site in two separate tabs (or two devices),
+  inject a fault in one, and watch `/api/infra/status` — and the External
+  Services tab in the *other* tab — reflect the same real state within a few
+  seconds, with no page communication between them at all.
+- **The failover payment is a real, independently-verifiable transaction.**
+  Every `Tx: 0x…` line in Agent Chat is tappable and opens the transaction
+  directly on [Arcscan](https://testnet.arcscan.app) — real value, real
+  block, real timestamp, checkable by anyone, not just claimed by our UI.
+  `curl -X POST https://api.studio.thegraph.com/query/1758530/mandate-vendor-reputation/v0.0.4 …`
+  (see The Graph section above) independently confirms the same payment
+  shows up in our own subgraph's indexed data too.
+- **The numbers you see are live aggregates, not hardcoded.**
+  `curl https://mandate.expo.app/api/traffic/stats` and
+  `curl https://mandate.expo.app/api/infra/status` return the exact same
+  real-time counters the UI renders — run traffic, curl again, watch the
+  totals actually move.
+
 ## Architecture
 
 Full diagrams: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

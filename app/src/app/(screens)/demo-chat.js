@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, Platform, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ShieldAlert, Terminal, Send, Server, Activity, Wallet } from 'lucide-react-native';
@@ -15,6 +15,15 @@ import { EdgePanels } from '../../features/mandate-control/EdgePanels';
 import { InternalHealthTab } from '../../features/mandate-control/InternalHealthTab';
 import { InfraStatusBar } from '../../features/mandate-control/InfraStatusBar';
 import { useTrafficLab } from '../../hooks/useTrafficLab';
+
+// Every "Tx: 0x..." chat line is a real Arc Testnet transaction hash — make
+// it tappable so a judge can verify it independently on Arcscan instead of
+// having to trust the app's own claim or copy-paste it by hand.
+const TX_HASH_RE = /0x[0-9a-fA-F]{64}/;
+function extractTxHash(text) {
+  const match = TX_HASH_RE.exec(text || '');
+  return match ? match[0] : null;
+}
 
 const INITIAL_MESSAGES = [
   { id: '1', role: 'system', text: 'SYSTEM ONLINE. I am Mandate-SRE-01.\n\nGrant native USDC from the treasury wallet to authorize my spend cap.' },
@@ -474,17 +483,23 @@ export default function DemoChatScreen() {
               contentContainerStyle={styles.chatScroll} 
               onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
             >
-              {messages.map(msg => (
+              {messages.map(msg => {
+                const txHash = msg.type === 'hash' ? extractTxHash(msg.text) : null;
+                const Bubble = txHash ? Pressable : View;
+                return (
                 <View key={msg.id} style={[
                   styles.messageWrapper,
                   msg.role === 'user' ? styles.messageUser : styles.messageSystem
                 ]}>
-                  <View style={[
-                    styles.bubble,
-                    msg.role === 'user' ? styles.bubbleUser : styles.bubbleSystem,
-                    (msg.type === 'error' || msg.type === 'escalation' || msg.type === 'inject') && { borderColor: 'rgba(255, 69, 58, 0.4)', backgroundColor: 'rgba(255, 69, 58, 0.05)' },
-                    (msg.type === 'success' || msg.type === 'payment' || msg.type === 'decision' || msg.type === 'refund') && { borderColor: 'rgba(52, 199, 89, 0.4)', backgroundColor: 'rgba(52, 199, 89, 0.05)' }
-                  ]}>
+                  <Bubble
+                    style={[
+                      styles.bubble,
+                      msg.role === 'user' ? styles.bubbleUser : styles.bubbleSystem,
+                      (msg.type === 'error' || msg.type === 'escalation' || msg.type === 'inject') && { borderColor: 'rgba(255, 69, 58, 0.4)', backgroundColor: 'rgba(255, 69, 58, 0.05)' },
+                      (msg.type === 'success' || msg.type === 'payment' || msg.type === 'decision' || msg.type === 'refund') && { borderColor: 'rgba(52, 199, 89, 0.4)', backgroundColor: 'rgba(52, 199, 89, 0.05)' }
+                    ]}
+                    {...(txHash ? { onPress: () => Linking.openURL(ArcService.getExplorerTxUrl(txHash)) } : {})}
+                  >
                     <Text style={[
                       styles.messageText,
                       msg.role === 'user' ? styles.messageTextUser : styles.messageTextSystem,
@@ -494,12 +509,14 @@ export default function DemoChatScreen() {
                       (msg.type === 'payment' || msg.type === 'refund' || msg.type === 'hash') && { color: '#5090D0' },
                       msg.type === 'agent' && { color: '#CBD5E1' },
                       msg.type === 'code' && { color: '#8E8E93' },
+                      txHash && { textDecorationLine: 'underline' },
                     ]}>
-                      {msg.text}
+                      {msg.text}{txHash ? '  ↗ view on Arcscan' : ''}
                     </Text>
-                  </View>
+                  </Bubble>
                 </View>
-              ))}
+                );
+              })}
 
             </ScrollView>
             
