@@ -41,11 +41,11 @@ export default function LandingPage() {
             onPress={() => router.push("/(screens)/demo-chat")}
             isPrimary={false}
           />
-          <ActionButton 
-            title="Face ID POS App" 
-            subtitle="Biometric Onboarding & Live Payments"
+          <ActionButton
+            title="Add User to Mandate"
+            subtitle="Verify with World ID and authorize your own agent budget"
             icon={<ArrowRight size={20} color="#000000" />}
-            onPress={() => router.push("/(app-core)/onboarding")}
+            onPress={() => router.push("/(screens)/add-user")}
             isPrimary={true}
           />
         </View>

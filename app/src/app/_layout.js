@@ -15,7 +15,7 @@ export default function RootLayout() {
         <MandateProvider>
           <ContextLoader />
           <Stack
-            initialRouteName="(screens)/main"
+            initialRouteName="index"
             screenOptions={{
               animation: "fade",
               headerShown: false,
@@ -23,7 +23,6 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="index" />
-            <Stack.Screen name="(screens)/main" />
             <Stack.Screen name="+not-found" options={{ title: 'Page Not Found' }} />
           </Stack>
           <StatusBar style="light" />
