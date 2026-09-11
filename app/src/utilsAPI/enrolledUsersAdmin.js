@@ -1,11 +1,35 @@
-import { createClient } from '@supabase/supabase-js';
+// Server-only: reads the Cloudflare API token, must never be imported from a client component.
+// Enrolled users now live in Cloudflare D1 (mandate-users) instead of Supabase — this app
+// runs as a normal Node/Expo server (not a Cloudflare Worker), so there's no native D1
+// binding available; we talk to D1 over its REST query API instead.
 
-// Server-only: reads the service-role key, must never be imported from a client component.
-export function getSupabaseAdmin() {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
-    throw new Error("[Configuration Error] Missing required environment variable: SUPABASE_URL or SUPABASE_SECRET_KEY. Please set them in app/.env");
+const D1_DATABASE_ID = 'a3f5a426-5495-4ba3-af34-830777b38b1a';
+
+async function queryD1(sql, params = []) {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  if (!accountId || !apiToken) {
+    throw new Error('[Configuration Error] Missing required environment variable: CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN. Please set them in app/.env');
   }
-  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
+
+  const res = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${D1_DATABASE_ID}/query`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ sql, params }),
+    }
+  );
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    const message = data.errors?.[0]?.message || `D1 query failed with HTTP ${res.status}`;
+    throw new Error(message);
+  }
+  return data.result?.[0]?.results || [];
 }
 
 function mapEnrolledUserRow(r) {
@@ -28,21 +52,45 @@ function mapEnrolledUserRow(r) {
     agentKey: r.agent_key,
     worldNullifier: r.world_nullifier,
     faceVector: vectorArray,
-    enrolledAt: r.enrolled_at
+    enrolledAt: r.enrolled_at,
   };
 }
 
-// Queries Supabase directly instead of looping back through this app's own
-// /api/db/users route — a same-process HTTP self-call has to guess its own
-// port/host, which silently breaks whenever the dev server isn't on the
-// assumed default port (or in any deployment where the internal port differs).
 export async function getAllEnrolledUsersFromDb() {
-  const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase
-    .from('enrolled_users')
-    .select('*')
-    .order('enrolled_at', { ascending: false });
+  const rows = await queryD1('SELECT * FROM enrolled_users ORDER BY enrolled_at DESC');
+  return rows.map(mapEnrolledUserRow);
+}
 
-  if (error) throw error;
-  return (data || []).map(mapEnrolledUserRow);
+export async function getEnrolledUserByWallet(walletAddress) {
+  const rows = await queryD1(
+    'SELECT * FROM enrolled_users WHERE wallet_address = ? LIMIT 1',
+    [walletAddress]
+  );
+  return rows[0] ? mapEnrolledUserRow(rows[0]) : null;
+}
+
+export async function upsertEnrolledUser(profile) {
+  const vectorString = JSON.stringify(profile.faceVector || []);
+  await queryD1(
+    `INSERT INTO enrolled_users (id, name, email, wallet_address, agent_key, face_vector, world_nullifier, enrolled_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       name = excluded.name,
+       email = excluded.email,
+       wallet_address = excluded.wallet_address,
+       agent_key = excluded.agent_key,
+       face_vector = excluded.face_vector,
+       world_nullifier = excluded.world_nullifier,
+       enrolled_at = excluded.enrolled_at`,
+    [
+      profile.id,
+      profile.name || null,
+      profile.email || null,
+      profile.walletAddress || null,
+      profile.agentKey || null,
+      vectorString,
+      profile.worldNullifier || null,
+      profile.enrolledAt || new Date().toISOString(),
+    ]
+  );
 }
