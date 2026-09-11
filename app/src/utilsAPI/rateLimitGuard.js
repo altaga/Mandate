@@ -27,9 +27,17 @@ async function queryD1(sql, params = []) {
       }
     );
     const data = await res.json();
-    if (!res.ok || !data.success) return null;
+    if (!res.ok || !data.success) {
+      // Log so a real bug here (bad SQL, wrong param count) is visible in
+      // server logs instead of silently degrading into "never rate limited"
+      // — fail-open is an intentional availability tradeoff, not a place to
+      // hide mistakes.
+      console.warn('[rateLimitGuard] D1 query failed:', JSON.stringify(data.errors));
+      return null;
+    }
     return data.result?.[0]?.results || [];
-  } catch {
+  } catch (err) {
+    console.warn('[rateLimitGuard] D1 request error:', err.message);
     return null;
   }
 }
@@ -64,7 +72,7 @@ export async function checkRateLimit({ request, route, limit, windowMs }) {
      VALUES (?, ?, 1)
      ON CONFLICT(bucket_key) DO UPDATE SET count = count + 1
      RETURNING count`,
-    [bucketKey, Date.now(), windowMs]
+    [bucketKey, Date.now()]
   );
 
   // Cheap, probabilistic cleanup of expired windows — no cron job available

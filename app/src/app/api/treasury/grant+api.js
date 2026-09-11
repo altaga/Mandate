@@ -23,8 +23,14 @@ function parseGrantAmount(raw) {
 
 export async function POST(request) {
   try {
+    // 20/5min, not 3/5min: this route is shared by two demo entry points
+    // (Add User to Mandate onboarding + the demo-chat grant action), and at
+    // a hackathon venue many judges testing from the same booth WiFi share
+    // one public IP. The $5/call cap already bounds worst case to $100 per
+    // window from a single IP — plenty tight against an automated drain
+    // script, generous enough not to block real onboarding traffic.
     const { limited, retryAfterSeconds } = await checkRateLimit({
-      request, route: 'treasury/grant', limit: 3, windowMs: 5 * 60 * 1000,
+      request, route: 'treasury/grant', limit: 20, windowMs: 5 * 60 * 1000,
     });
     if (limited) return rateLimitResponse(retryAfterSeconds);
 
