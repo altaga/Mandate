@@ -14,24 +14,47 @@
 import { withLabGlitch } from '../../../server/withLabGlitch.js';
 import { VENDOR_CATALOG } from '../../../constants/vendors.js';
 import { getLiveVendorReputation } from '../../../utilsAPI/vendorReputationD1.js';
+import { getSubgraphVendorReputation } from '../../../utilsAPI/vendorReputationGraph.js';
 
 export async function GET(request) {
   return withLabGlitch(request, 'reputation', async () => {
-    const live = await getLiveVendorReputation();
+    const [d1Live, subgraphLive] = await Promise.all([
+      getLiveVendorReputation(),
+      getSubgraphVendorReputation(),
+    ]);
 
     const vendors = Object.values(VENDOR_CATALOG).map((v) => {
-      const liveStats = live[v.id];
-      // Real, D1-derived reputation replaces the static catalog number once a
-      // vendor has enough real logged outcomes; below that it's honestly
-      // reported as the static fallback, not silently blended.
-      const reputation = liveStats ? liveStats.successRate : v.reputation;
+      const subgraphStats = v.recipient ? subgraphLive[v.recipient.toLowerCase()] : null;
+      const d1Stats = d1Live[v.id];
+      // Priority: our own deployed subgraph (indexes real, independently-
+      // verifiable on-chain UserOperationEvent logs — nobody we control can
+      // fudge this) > D1 (real outcomes, but logged by our own Workers) >
+      // static catalog fallback. Never silently blended — reputationSource
+      // says exactly which one produced the number.
+      let reputation, reputationSource, liveSampleSize, liveAvgLatencyMs;
+      if (subgraphStats) {
+        reputation = subgraphStats.successRate;
+        reputationSource = 'live_subgraph';
+        liveSampleSize = subgraphStats.totalOps;
+        liveAvgLatencyMs = null;
+      } else if (d1Stats) {
+        reputation = d1Stats.successRate;
+        reputationSource = 'live_d1';
+        liveSampleSize = d1Stats.sampleSize;
+        liveAvgLatencyMs = d1Stats.avgLatencyMs;
+      } else {
+        reputation = v.reputation;
+        reputationSource = 'static_catalog';
+        liveSampleSize = 0;
+        liveAvgLatencyMs = null;
+      }
       return {
         id: v.id,
         name: v.name,
         reputation,
-        reputationSource: liveStats ? 'live_d1' : 'static_catalog',
-        liveSampleSize: liveStats?.sampleSize || 0,
-        liveAvgLatencyMs: liveStats?.avgLatencyMs ?? null,
+        reputationSource,
+        liveSampleSize,
+        liveAvgLatencyMs,
         costUsdc: v.costUsdc,
         specialty: v.specialty,
         normalLatencyMs: v.normalLatencyMs,

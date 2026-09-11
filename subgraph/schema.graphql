@@ -1,0 +1,26 @@
+type UserOperation @entity(immutable: true) {
+  id: ID!                        # userOpHash
+  sender: Bytes!                 # Mandate agent smart account
+  paymaster: Bytes!
+  nonce: BigInt!
+  success: Boolean!
+  actualGasCost: BigInt!
+  actualGasUsed: BigInt!
+  vendor: Bytes                  # decoded from the nested execute(address,uint256,bytes) call, null if decode failed
+  amount: BigInt                 # native USDC amount (wei), null if decode failed
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+  debugStage: String            # temporary: where decodeVendorPayment stopped, for diagnosing
+  debugInputLen: Int            # temporary: byte length of event.transaction.input
+}
+
+type VendorReputation @entity(immutable: false) {
+  id: ID!                        # vendor address (lowercase hex)
+  totalOps: BigInt!
+  successCount: BigInt!
+  failureCount: BigInt!
+  successRate: BigDecimal!       # successCount / totalOps * 100
+  totalPaidWei: BigInt!          # sum of amounts on successful ops only
+  lastUpdatedAt: BigInt!
+}

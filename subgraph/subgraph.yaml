@@ -1,0 +1,25 @@
+specVersion: 1.0.0
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: EntryPoint
+    network: arc-testnet
+    source:
+      address: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"
+      abi: EntryPoint
+      startBlock: 61500000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - UserOperation
+        - VendorReputation
+      abis:
+        - name: EntryPoint
+          file: ./abis/EntryPoint.json
+      eventHandlers:
+        - event: UserOperationEvent(indexed bytes32,indexed address,indexed address,uint256,bool,uint256,uint256)
+          handler: handleUserOperationEvent
+      file: ./src/mapping.ts
