@@ -30,19 +30,21 @@ const DEFAULT_STATE = {
 
 /**
  * Record a single request hit for a given path.
- * Called from withLabGlitch.js after each request completes. Fire-and-forget
- * — this runs inside every real API route, so it must never add latency to
- * the actual response.
+ * Called from withLabGlitch.js after each request completes. Must be
+ * awaited, not fire-and-forget: EAS Hosting's runtime can freeze or tear
+ * down the function as soon as the Response is returned, which silently
+ * dropped every un-awaited write here in practice (confirmed directly).
  */
-export function recordServiceHit(path, status, latencyMs) {
+export async function recordServiceHit(path, status, latencyMs) {
   const ok = status >= 200 && status < 400;
   const ms = Number(latencyMs) || 0;
   const now = Date.now();
 
-  queryD1Async(
+  const windowWrite = queryD1(
     'INSERT INTO infra_health_window (path, created_at, ok, latency_ms) VALUES (?, ?, ?, ?)',
     [path, now, ok ? 1 : 0, ms]
   );
+  // Probabilistic cleanup — fire-and-forget is fine, nothing depends on it.
   if (Math.random() < 0.05) {
     queryD1Async(
       `DELETE FROM infra_health_window WHERE path = ? AND id NOT IN
@@ -60,7 +62,7 @@ export function recordServiceHit(path, status, latencyMs) {
   // after setting it to 'recovering' in the same call, so the hit that
   // triggers the transition also counts as the first clean recovery probe.
   const okInt = ok ? 1 : 0;
-  queryD1Async(
+  const stateWrite = queryD1(
     `INSERT INTO infra_health_state (path, last_hit_at, last_status, last_latency_ms)
      VALUES (?, ?, ?, ?)
      ON CONFLICT(path) DO UPDATE SET
@@ -81,6 +83,8 @@ export function recordServiceHit(path, status, latencyMs) {
        last_latency_ms = excluded.last_latency_ms`,
     [path, now, status, ms, okInt, okInt, okInt, okInt, okInt, okInt]
   );
+
+  await Promise.all([windowWrite, stateWrite]);
 }
 
 /**

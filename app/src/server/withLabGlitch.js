@@ -16,6 +16,10 @@ import { recordServiceHit, getServiceHealth } from './infraHealthStore';
  * recordServiceHit() below still always records the TRUE Layer 0 outcome
  * either way, so recovery-probe counting stays honest regardless of what the
  * caller actually receives.
+ *
+ * recordHit/recordServiceHit are awaited (not fire-and-forget) — EAS
+ * Hosting's runtime can tear down the function as soon as the Response is
+ * returned, which was silently dropping unawaited writes in practice.
  */
 export async function withLabGlitch(request, path, handler, sponsorFallback) {
   const isLab = request?.headers?.get?.('x-traffic-lab') === '1';
@@ -25,7 +29,7 @@ export async function withLabGlitch(request, path, handler, sponsorFallback) {
   if (!isLab) {
     const response = await handler();
     const latencyMs = Date.now() - started;
-    recordServiceHit(path, response.status, latencyMs);
+    await recordServiceHit(path, response.status, latencyMs);
     return response;
   }
 
@@ -39,7 +43,7 @@ export async function withLabGlitch(request, path, handler, sponsorFallback) {
     // infraHealthStore always gets the TRUE Layer 0 outcome, regardless of
     // what we end up returning to the caller below — recovery-probe counting
     // must stay honest about whether Layer 0 itself is actually healthy again.
-    recordServiceHit(path, status, Date.now() - started);
+    await recordServiceHit(path, status, Date.now() - started);
 
     // Pure if-decision: an active (or recovering) sponsor already covers this
     // path, so actually serve the client through it instead of surfacing the
@@ -51,14 +55,14 @@ export async function withLabGlitch(request, path, handler, sponsorFallback) {
         // trafficLabStore (the Traffic Simulator's own displayed stats) records
         // what the caller ACTUALLY received — a real success via the sponsor —
         // not the masked Layer 0 failure underneath it.
-        recordHit({ path, status: sponsorResponse.status, latencyMs: Date.now() - started, ok: sponsorResponse.ok, worker });
+        await recordHit({ path, status: sponsorResponse.status, latencyMs: Date.now() - started, ok: sponsorResponse.ok, worker });
         return sponsorResponse;
       } catch {
         // Sponsor itself failed too — fall through to the real Layer 0 error.
       }
     }
 
-    recordHit({ path, status, latencyMs: Date.now() - started, ok: false, timeout: Boolean(glitch.timeout), worker });
+    await recordHit({ path, status, latencyMs: Date.now() - started, ok: false, timeout: Boolean(glitch.timeout), worker });
     return Response.json(
       { error: glitch.timeout ? 'Traffic lab timeout' : 'Traffic lab error',
         glitch: glitch.timeout ? 'timeout' : 'error' },
@@ -68,7 +72,9 @@ export async function withLabGlitch(request, path, handler, sponsorFallback) {
 
   const response = await handler();
   const latencyMs = Date.now() - started;
-  recordHit({ path, status: response.status, latencyMs, ok: response.ok, worker });
-  recordServiceHit(path, response.status, latencyMs);
+  await Promise.all([
+    recordHit({ path, status: response.status, latencyMs, ok: response.ok, worker }),
+    recordServiceHit(path, response.status, latencyMs),
+  ]);
   return response;
 }

@@ -38,16 +38,21 @@ export async function setGlitch({ mode, latencyMs } = {}) {
   return { mode: nextMode, latencyMs: nextLatency };
 }
 
-// Fire-and-forget: this runs inside every real API route via withLabGlitch,
-// so it must never add latency to the actual response.
-export function recordHit({ path, status, latencyMs, ok, timeout, worker }) {
-  queryD1Async(
+// Must be awaited, not fire-and-forget: EAS Hosting's runtime can freeze or
+// tear down the function as soon as the Response is returned, which was
+// silently dropping every un-awaited write here (confirmed directly — a
+// real faulted request returned a real 503, but /api/traffic/stats read
+// back total:0 afterward). A few tens of ms of added latency on lab-traffic
+// requests is the correct trade for the counters actually being real.
+export async function recordHit({ path, status, latencyMs, ok, timeout, worker }) {
+  await queryD1(
     `INSERT INTO traffic_hits (created_at, path, status, latency_ms, ok, is_timeout, worker)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [Date.now(), path || 'unknown', Number(status) || 0, Number(latencyMs) || 0, ok ? 1 : 0, timeout ? 1 : 0, worker || '—']
   );
   // Cheap, probabilistic cleanup so this append-only log doesn't grow forever
-  // across a long demo session.
+  // across a long demo session — fire-and-forget is fine here since nothing
+  // downstream depends on it completing before the response returns.
   if (Math.random() < 0.02) {
     queryD1Async('DELETE FROM traffic_hits WHERE created_at < ?', [Date.now() - 30 * 60 * 1000]);
   }
