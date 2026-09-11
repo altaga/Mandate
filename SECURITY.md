@@ -131,16 +131,15 @@ Deployed the fix to production immediately rather than batching it with
 other work, since every minute this endpoint stayed live increased the
 odds of a real judge's private key being captured.
 
-**Lower-severity, not fixed here:** enrolled-user IDs are
+**Lower-severity, now fixed:** enrolled-user IDs were
 `'usr_' + Date.now().toString(36)` (`biometricService.js`) — a predictable
 timestamp, not a random one. `upsertEnrolledUser`'s `ON CONFLICT(id) DO
-UPDATE` means a guessed/nearby ID could overwrite another user's D1 record.
-Checked the actual blast radius: it's data-integrity only, not fund theft —
-the Mandate budget grant flow (`ArcService.grantFromTreasury`) always pays
-into the shared `MANDATE_AGENT_ADDRESS`, never anything read from this
-table, so corrupting a record can't redirect real money. Worth a real ID
-scheme and a write-ownership check eventually, not urgent enough to block
-on right now.
+UPDATE` meant a guessed/nearby ID could overwrite another user's D1 record.
+The actual blast radius was always data-integrity only, not fund theft — the
+Mandate budget grant flow (`ArcService.grantFromTreasury`) always pays into
+the shared `MANDATE_AGENT_ADDRESS`, never anything read from this table, so
+corrupting a record couldn't redirect real money — but there was no reason
+to leave a guessable primary key in place. Switched to `crypto.randomUUID()`.
 
 ## Env var reference (post-purge)
 
@@ -179,9 +178,47 @@ nothing used them). Neither went to a third party, but a credential that
 sat in a terminal transcript is reasonable to rotate out of caution even
 though removing the unused vars already closes the practical exposure.
 
-## Known limitation, not fixed here
+## Fourth pass: a full route-by-route audit, three more real gaps
 
-Neither `agent-pay` nor `treasury/grant` rate-limits repeated calls — the
-per-call caps bound each request, but nothing stops many small requests back
-to back. Out of scope for this pass; flagging so it isn't mistaken for
-solved.
+A follow-up request to confirm every route was actually checked (not just
+the three above) found three more:
+
+- **`verify+api.js` failed open.** If World's verify endpoint ever returned
+  something that wasn't valid JSON (a gateway error page, a timeout), the
+  parse failure was caught and the route returned `verified: true` with a
+  fake nullifier anyway. A network hiccup — not an attack — could silently
+  bypass real World ID verification. Now fails closed: 502, `verified: false`.
+- **`services/vendor+api.js`'s x402 payment check only confirmed a tx hash
+  existed and succeeded** — never that it actually paid *this vendor's* cost
+  to *this vendor's* address, and had no replay protection. One successful
+  transaction of any kind could be reused to unlock every vendor's service
+  repeatedly for free. Fixed in `utilsAPI/vendorPaymentGuard.js`: decodes the
+  real ERC-4337 UserOperation calldata (`EntryPoint.handleOps` ->
+  `SimpleAccount.execute(dest, value, func)` — the same nested-calldata shape
+  the subgraph mapping already had to decode by hand) to verify the real
+  recipient and amount, and records every redeemed tx hash in a new D1 table
+  (`used_payments`) so a hash can only ever be spent once.
+- **`recognize+api.js`'s match threshold came straight from the client** with
+  no floor — a caller could set it near 0 and turn face recognition into
+  "whoever's enrolled face is closest, regardless of real similarity."
+  Clamped server-side to `[0.85, 0.99]`; the client-supplied value can narrow
+  it but never weaken it below the real default.
+
+## Known limitation, now fixed: rate limiting
+
+Previously: neither `agent-pay` nor `treasury/grant` rate-limited repeated
+calls — the per-call caps bounded each request, but nothing stopped many
+small requests back to back.
+
+Fixed with `utilsAPI/rateLimitGuard.js`: fixed-window, per-IP limiting backed
+by the same D1 database already used for reputation/replay data (atomic
+`INSERT ... ON CONFLICT DO UPDATE ... RETURNING`, so it holds across multiple
+server instances rather than resetting per-instance the way an in-memory
+counter would). Wired into every route that moves funds, costs real compute,
+or writes to D1: `treasury/grant` (3/5min), `payment/agent-pay` (15/min),
+`services/vendor` (30/min), `recognize` (20/min), `extract` (20/min),
+`verify` (20/min), `db/users` POST (10/5min). Deliberately fails open if D1
+itself is unreachable — each of these routes already has its own per-call
+amount/allowlist bound, so keeping the demo available through a Cloudflare
+outage matters more than the rate limit staying perfectly enforced during
+one.
