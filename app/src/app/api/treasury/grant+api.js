@@ -1,10 +1,21 @@
 import { ethers } from 'ethers';
 import { sendSponsoredTransfer } from '../../../server/erc4337';
 
+// This route is reachable directly from the browser (Mission Control's grant
+// flow and the judge-facing Add User to Mandate screen both call it), so it
+// can't rely on the caller being trustworthy. Bounded to the "$1 Survival
+// Test" scale intentionally — a single call can never drain the whole
+// treasury, regardless of what a client requests. Raise deliberately if the
+// demo needs bigger grants, not by accident.
+const MAX_GRANT_USDC = 5;
+
 function parseGrantAmount(raw) {
   const amount = Number(raw);
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error('Amount must be greater than $0 USDC.');
+  }
+  if (amount > MAX_GRANT_USDC) {
+    throw new Error(`Amount exceeds the maximum single grant of $${MAX_GRANT_USDC} USDC.`);
   }
   return amount;
 }

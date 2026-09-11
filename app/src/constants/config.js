@@ -79,8 +79,4 @@ export const CONFIG = {
     }
   },
 
-  SUPABASE: {
-    URL: getEnv('SUPABASE_URL', false),
-    ANON_KEY: getEnv('SUPABASE_ANON_KEY', false)
-  }
 };
