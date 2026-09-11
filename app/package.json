@@ -34,7 +34,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "ethers": "^6.17.0",
-    "expo": "55.0.24",
+    "expo": "55.0.31",
     "expo-constants": "55.0.16",
     "expo-font": "55.0.7",
     "expo-haptics": "55.0.3",
