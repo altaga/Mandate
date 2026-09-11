@@ -5,7 +5,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { ethers } from "ethers";
+import { verifyRealVendorPayment } from "../../../utilsAPI/vendorPaymentGuard.js";
 
 const VENDOR_CATALOG = {
   ai_inference: {
@@ -154,17 +154,16 @@ export async function POST(request) {
         }
       );
     } else {
-      // [100% REAL VERIFICATION] Validate the transaction on Arc Testnet
+      // [100% REAL VERIFICATION] Validate the transaction on Arc Testnet: it
+      // must (a) exist and have succeeded, (b) actually be a Mandate
+      // EntryPoint UserOperation that pays >= this vendor's cost to this
+      // vendor's own recipient address (not just any successful tx hash —
+      // checking receipt.status alone would let a caller pay $0.0001 to an
+      // unrelated address and reuse that one hash to unlock every vendor),
+      // and (c) never have been used to pay for a request before (replay
+      // protection — otherwise one real payment could be reused forever).
       try {
-        const provider = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
-        const receipt = await provider.getTransactionReceipt(paymentTx);
-        
-        if (!receipt) {
-          throw new Error("Transaction hash not found on the Arc Testnet.");
-        }
-        if (receipt.status !== 1) {
-          throw new Error("Transaction was reverted or failed.");
-        }
+        await verifyRealVendorPayment(paymentTx, vendor);
       } catch (err) {
         return Response.json(
           { status: 401, error: "Cryptographic Verification Failed", message: err.message },

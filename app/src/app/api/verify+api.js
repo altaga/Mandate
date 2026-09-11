@@ -28,11 +28,16 @@ export async function POST(request) {
     try {
       verifyData = JSON.parse(responseText);
     } catch (e) {
+      // World's verify endpoint returned something that isn't JSON (a gateway
+      // error page, a timeout page, etc). This must fail closed — verification
+      // is a security gate, and an upstream hiccup is not proof of a real
+      // World ID proof. Never treat "we couldn't parse the response" as
+      // "verified: true".
       return Response.json({
-        success: true,
-        verified: true,
-        data: { verification_level: "device", nullifier: "0x_sandbox_fallback_nullifier" }
-      });
+        success: false,
+        verified: false,
+        error: 'World ID verification service returned an unexpected response.',
+      }, { status: 502 });
     }
     
     if (verifyRes.ok && verifyData.success) {

@@ -6,9 +6,16 @@ import { CONFIG } from '../../constants/config.js';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { imageBase64, threshold = 0.85 } = body;
+    const { imageBase64, threshold: requestedThreshold } = body;
 
     if (!imageBase64) throw new Error('Missing imageBase64');
+
+    // threshold is a security parameter (how close a face has to be to count
+    // as a match) — it must never be trusted from the client. A caller who
+    // sets it near 0 would turn this into a "who's the closest enrolled face"
+    // oracle regardless of true similarity. Clamp to a floor no client input
+    // can go below; 0.85 stays the real default.
+    const threshold = Math.min(0.99, Math.max(0.85, Number(requestedThreshold) || 0.85));
 
     const candidateVector = await ServerBiometricService.extractRealFaceVector(imageBase64);
 
