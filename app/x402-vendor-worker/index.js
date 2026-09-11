@@ -68,6 +68,23 @@ function evaluateSla(latencyMs, work, failed, failMessage) {
   };
 }
 
+/**
+ * Writes a real outcome row to the shared D1 reputation ledger (mandate_reputation
+ * binding). Best-effort: a D1 failure must never break the actual vendor response.
+ */
+async function logOutcome(env, ctx, { vendorId, vendorName, success, latencyMs, slaStatus }) {
+  if (!env.mandate_reputation) return;
+  const write = env.mandate_reputation
+    .prepare(
+      'INSERT INTO outcomes (vendor_id, vendor_name, success, latency_ms, sla_status, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+    )
+    .bind(vendorId, vendorName, success ? 1 : 0, latencyMs, slaStatus, Date.now())
+    .run()
+    .catch((err) => console.warn('[D1] outcome write failed:', err.message));
+  if (ctx && ctx.waitUntil) ctx.waitUntil(write);
+  else await write;
+}
+
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
@@ -209,7 +226,7 @@ async function executeWorkload(vendorId, env, prompt) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: cors });
     }
@@ -235,9 +252,10 @@ export default {
 
     const started = Date.now();
     let workType = 'rpc';
+    let vendorId = 'unknown';
     try {
       const body = await request.json().catch(() => ({}));
-      const vendorId = (body.vendorId || 'cloudburst').toLowerCase();
+      vendorId = (body.vendorId || 'cloudburst').toLowerCase();
       const meta = VENDOR_META[vendorId] || VENDOR_META.cloudburst;
       workType = meta.work;
 
@@ -251,6 +269,7 @@ export default {
         await new Promise((r) => setTimeout(r, profile.maxSlaMs + 200));
         const latencyAchievedMs = Date.now() - started;
         const judged = evaluateSla(latencyAchievedMs, meta.work, false);
+        await logOutcome(env, ctx, { vendorId, vendorName: meta.name, success: false, latencyMs: latencyAchievedMs, slaStatus: 'BREACHED' });
         return json({
           success: false,
           slaStatus: 'BREACHED',
@@ -266,6 +285,12 @@ export default {
       const realWorkloadExecuted = await executeWorkload(vendorId, env, body.prompt || '');
       const latencyAchievedMs = Date.now() - started;
       const judged = evaluateSla(latencyAchievedMs, meta.work, false);
+      await logOutcome(env, ctx, {
+        vendorId, vendorName: meta.name,
+        success: judged.slaStatus === 'HONORED',
+        latencyMs: latencyAchievedMs,
+        slaStatus: judged.slaStatus,
+      });
 
       return json({
         success: judged.slaStatus === 'HONORED',
@@ -280,6 +305,13 @@ export default {
     } catch (err) {
       const latencyAchievedMs = Date.now() - started;
       const judged = evaluateSla(latencyAchievedMs, workType, true, err.message || String(err));
+      await logOutcome(env, ctx, {
+        vendorId,
+        vendorName: VENDOR_META[vendorId]?.name || env.WORKER_NAME || 'unknown',
+        success: false,
+        latencyMs: latencyAchievedMs,
+        slaStatus: judged.slaStatus,
+      });
       return json({
         success: false,
         slaStatus: judged.slaStatus,

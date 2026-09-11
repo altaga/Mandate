@@ -114,6 +114,11 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 WORKER_NAME = "${workerName}"
+
+[[d1_databases]]
+binding = "mandate_reputation"
+database_name = "mandate-reputation"
+database_id = "15fa0b96-c498-402f-a4e5-361576b4a490"
 `;
   fs.writeFileSync(path.join(__dirname, 'wrangler.toml'), toml);
 }
