@@ -41,21 +41,35 @@ export const EnrollmentScreen = ({ onEnrollSuccess }) => {
   // Webcam
   const webcamRef = useRef(null);
   const [capturedImage, setCapturedImage] = useState(null);
+  const [precomputedFaceVector, setPrecomputedFaceVector] = useState(null);
 
   const handleCaptureFace = async () => {
     try {
       setInitializingFace(true);
       
-      // 1. Capture real photo from WebCam
+      let base64 = null;
       if (webcamRef.current) {
-        const base64 = webcamRef.current.capture();
+        base64 = webcamRef.current.capture();
         if (base64) {
           setCapturedImage(base64);
+        } else {
+          throw new Error('Failed to capture image from camera.');
         }
       }
 
-      // 2. Init World ID — fixed "recognition" action so this person's nullifier_hash
-      // is deterministic and can be matched again on a future World ID login.
+      // 2. Pre-validate the face image (Quality/Detection Check)
+      const extractRes = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64 })
+      });
+      const extractResult = await extractRes.json();
+      if (!extractResult.success) {
+        throw new Error(extractResult.error || "Quality check failed. Please ensure your face is clearly visible.");
+      }
+      setPrecomputedFaceVector(extractResult.faceVector);
+
+      // 3. Init World ID — fixed "recognition" action
       const res = await fetch('/api/sign?purpose=recognition');
       if (!res.ok) throw new Error('Failed to fetch signature');
       const data = await res.json();
@@ -65,7 +79,8 @@ export const EnrollmentScreen = ({ onEnrollSuccess }) => {
         setIdkitOpen(true);
       }
     } catch (err) {
-      console.log('Failed to get RP Context:', err);
+      console.log('Failed to pre-validate face or get RP Context:', err);
+      alert('Verification Error: ' + err.message);
     } finally {
       setInitializingFace(false);
     }
@@ -118,19 +133,10 @@ export const EnrollmentScreen = ({ onEnrollSuccess }) => {
       const newWalletAddress = await factory.getAddress(agentOwnerWallet.address, 0);
       setGeneratedWallet(newWalletAddress);
 
-      // 1. Get the face vector from the Server AI
-      let faceVector = null;
-      if (capturedImage) {
-        const res = await fetch('/api/extract', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: capturedImage })
-        });
-        const result = await res.json();
-        if (!result.success) {
-          throw new Error(result.error || "Server AI failed to extract vector.");
-        }
-        faceVector = result.faceVector;
+      // 1. Use the face vector we already pre-validated
+      const faceVector = precomputedFaceVector;
+      if (!faceVector) {
+        throw new Error("No face vector found. Please try capturing your face again.");
       }
 
       // 2. Enroll the user using the precomputed vector from the server
@@ -197,7 +203,7 @@ export const EnrollmentScreen = ({ onEnrollSuccess }) => {
               if (onEnrollSuccess) {
                 onEnrollSuccess();
               } else {
-                setSuccess(false); setCaptured(false); setWorldIdProof(null); setCapturedImage(null); setName(''); setEmail(''); setCameraActive(false); 
+                setSuccess(false); setCaptured(false); setWorldIdProof(null); setCapturedImage(null); setPrecomputedFaceVector(null); setName(''); setEmail(''); setCameraActive(false); 
               }
             }} 
             style={({ pressed }) => [styles.secBtn, pressed && styles.btnPressed]}

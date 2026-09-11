@@ -76,11 +76,19 @@ export default function AddUserScreen() {
               </Pressable>
             </>
           ) : (
-            <View style={styles.verifiedBox}>
-              <Text style={styles.verifiedLabel}>MANDATE CONFIRMED</Text>
-              <Text style={styles.verifiedValue}>${grantResult.amount.toFixed(2)} USDC granted</Text>
-              <Text style={styles.txLink}>{ArcService.getExplorerTxUrl(grantResult.txHash)}</Text>
-            </View>
+            <>
+              <View style={styles.verifiedBox}>
+                <Text style={styles.verifiedLabel}>MANDATE CONFIRMED</Text>
+                <Text style={styles.verifiedValue}>${grantResult.amount.toFixed(2)} USDC granted</Text>
+                <Text style={styles.txLink}>{ArcService.getExplorerTxUrl(grantResult.txHash)}</Text>
+              </View>
+              <Pressable
+                onPress={() => router.push('/(screens)/demo-chat')}
+                style={[styles.primaryBtn, { marginTop: 24 }]}
+              >
+                <Text style={styles.primaryBtnText}>ENTER MISSION CONTROL</Text>
+              </Pressable>
+            </>
           )}
         </View>
       )}

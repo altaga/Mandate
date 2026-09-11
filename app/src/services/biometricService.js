@@ -7,6 +7,7 @@
 
 import { SecurityService } from '../utils/security.js';
 import { CONFIG } from '../constants/config.js';
+import { DatabaseService } from './databaseService.js';
 
 export class BiometricService {
   static extract128dFaceVector(seedInput = 'default_seed') {
@@ -67,7 +68,6 @@ export class BiometricService {
       ? candidateVector
       : this.extract128dFaceVector(candidateVector || 'face_frame_sample');
 
-    const { DatabaseService } = await import('./databaseService.js');
     const allUsers = await DatabaseService.getAllEnrolledUsers();
 
     if (!allUsers || allUsers.length === 0) {
@@ -111,7 +111,6 @@ export class BiometricService {
   static async identifyUserByWorldID({ nullifierHash }) {
     if (!nullifierHash) return { success: false, error: 'No nullifier hash provided' };
 
-    const { DatabaseService } = await import('./databaseService.js');
     const allUsers = await DatabaseService.getAllEnrolledUsers();
     
     const matchedUser = allUsers.find(u => u.worldNullifier === nullifierHash);
@@ -156,7 +155,6 @@ export class BiometricService {
       riskTier: 'LOW'
     };
 
-    const { DatabaseService } = await import('./databaseService.js');
     await DatabaseService.saveEnrolledUser(profilePayload);
 
     return profilePayload;
