@@ -26,11 +26,22 @@ export function useTrafficLab() {
   const [error, setError] = useState('');
   const stopRef = useRef(null);
 
+  // Both the 900ms background poll and an explicit applyGlitch() call race
+  // to set glitchMode from their own response — whichever network request
+  // happened to resolve last used to win, regardless of which one was fired
+  // more recently. That let a stale poll (in flight before the user clicked)
+  // silently revert a just-applied fault back to its old value, so the panel
+  // looked like the click did nothing even though the server had it right.
+  // Every request now stamps a ticket when it STARTS; a response is only
+  // applied if no newer request has started since.
+  const glitchSeqRef = useRef(0);
+
   const refreshStats = useCallback(async () => {
+    const ticket = ++glitchSeqRef.current;
     try {
       const next = await TrafficLabService.fetchStats();
       setStats(next);
-      if (next.glitch?.mode) setGlitchMode(next.glitch.mode);
+      if (next.glitch?.mode && ticket === glitchSeqRef.current) setGlitchMode(next.glitch.mode);
       setError('');
     } catch (err) {
       setError(err.message);
@@ -83,9 +94,10 @@ export function useTrafficLab() {
   useEffect(() => () => stopWorkers(), [stopWorkers]);
 
   const applyGlitch = useCallback(async (mode) => {
+    const ticket = ++glitchSeqRef.current;
     try {
       const next = await TrafficLabService.setGlitch(mode, 800);
-      setGlitchMode(next.mode);
+      if (ticket === glitchSeqRef.current) setGlitchMode(next.mode);
       setError('');
     } catch (err) {
       setError(err.message);
