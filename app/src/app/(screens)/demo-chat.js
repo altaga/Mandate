@@ -8,6 +8,7 @@ import { AgentService } from '../../services/agentService';
 import { ArcService } from '../../services/arcService';
 import { AGENT_NAME, getPreMandateReply } from '../../services/mandateChatPolicy';
 import { CONFIG } from '../../constants/config';
+import { VENDOR_CATALOG } from '../../constants/vendors';
 import { useAgentTreasury } from '../../hooks/useAgentTreasury';
 import { useInfraHealth } from '../../hooks/useInfraHealth';
 import { TreasuryTab } from '../../features/mandate-control/TreasuryTab';
@@ -264,7 +265,7 @@ export default function DemoChatScreen() {
           <View style={styles.statusBadge}>
             <View style={[styles.statusDot, mandateFunded && styles.statusDotActive]} />
             <Text style={[styles.statusText, mandateFunded && styles.statusTextActive]}>
-              {mandateFunded ? 'MANDATE FUNDED' : 'READY'}
+              {mandateFunded ? (lab.running ? 'RUNNING' : 'MANDATE FUNDED') : 'READY'}
             </Text>
           </View>
         </View>
@@ -437,22 +438,14 @@ export default function DemoChatScreen() {
             {/* Sponsor catalog */}
             <Text style={styles.sectionHeading}>SPONSOR CATALOG (STANDBY)</Text>
             <View style={styles.vendorList}>
-              {[
-                { name: 'The Graph Oracle', cost: '$0.00004 / query', desc: 'Vendor reputation + liveness (real GRAPH_API_KEY, live queries)', rep: 98.9 },
-                { name: 'Arc Direct RPC', cost: 'Free', desc: 'Balance reads bypassing Expo server (eth_getBalance via ARC_RPC_URL)', rep: 99.8 },
-                { name: 'MiniMax Reasoning', cost: '$0.0008 / call', desc: 'Primary LLM reasoning engine (MINIMAX_API_KEY)', rep: 99.1 },
-                { name: 'CloudBurst AI Edge', cost: '$0.0008 / incident', desc: 'AI ingress load-balancing for traffic spikes', rep: 99.1 },
-                { name: 'MegaCompute Cluster', cost: '$0.0021 / incident', desc: 'High-throughput fallback compute cluster', rep: 98.7 },
-                { name: 'Arc ERC-4337 Bundler', cost: '$0.0004 / relay', desc: 'Gasless UserOp relay to Arc EntryPoint', rep: 99.8 },
-                { name: 'ResilientDB Recovery', cost: '$1.20 / incident', desc: 'Multi-region disaster recovery (requires human escalation)', rep: 99.9 },
-              ].map((v) => (
+              {Object.values(VENDOR_CATALOG).map((v) => (
                 <View key={v.name} style={styles.vendorCard}>
                   <View style={styles.vendorHeader}>
                     <Text style={styles.vendorName}>{v.name}</Text>
                     <View style={styles.vendorBadgeStandby}><Text style={styles.vendorBadgeTextStandby}>STANDBY</Text></View>
                   </View>
-                  <Text style={styles.vendorCost}>{v.cost} · Rep {v.rep}%</Text>
-                  <Text style={styles.vendorDesc}>{v.desc}</Text>
+                  <Text style={styles.vendorCost}>${v.costUsdc} / call · Rep {v.reputation}%</Text>
+                  <Text style={styles.vendorDesc}>{v.specialty}</Text>
                 </View>
               ))}
             </View>
