@@ -73,6 +73,14 @@ export class GraphService {
       const blockNumber = meta?.number || 25892242;
       const blockHash = meta?.hash || '0x0dfc97adde026788ee0a3bca397c9abdd613bf836d1acfb10024a6d9ee422a05';
 
+      // Real risk signal derived from the query result actually returned by
+      // the Gateway, not a fixed constant: how far behind chain head is this
+      // subgraph's indexer? A stale indexer is a genuine reason to be more
+      // cautious about trusting on-chain state for a payment decision.
+      const blockTimestamp = meta?.timestamp ? Number(meta.timestamp) : null;
+      const indexerLagSeconds = blockTimestamp ? Math.max(0, Math.round(Date.now() / 1000) - blockTimestamp) : null;
+      const riskEvaluation = computeRiskFromIndexerLag(indexerLagSeconds);
+
       return {
         subgraphUrl: gatewayUrl,
         subgraphId,
@@ -100,11 +108,8 @@ export class GraphService {
           verifiedStatus: true,
           trustScore: 99.2
         },
-        riskEvaluation: {
-          riskScore: 4.8,
-          riskTier: 'VERY_LOW_RISK',
-          recommendation: 'PROCEED_AUTOMATIC_PAYMENT'
-        }
+        indexerLagSeconds,
+        riskEvaluation,
       };
     } catch (err) {
       console.warn('[GraphService] Network Gateway fallback:', err.message);
@@ -116,7 +121,7 @@ export class GraphService {
         blockHash: '0x0dfc97adde026788ee0a3bca397c9abdd613bf836d1acfb10024a6d9ee422a05',
         latencyMs: 142,
         queryTimestamp: new Date().toISOString(),
-        liveGraphResponseStatus: 'CACHED_RESILIENT_INDEXED',
+        liveGraphResponseStatus: 'GATEWAY_UNREACHABLE_FALLBACK',
         usdcTelemetry: {
           tokenAddress: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
           txCount: 38160100,
@@ -134,12 +139,39 @@ export class GraphService {
           verifiedStatus: true,
           trustScore: 99.2
         },
+        indexerLagSeconds: null,
+        // The Gateway itself was unreachable, not merely lagging — this is
+        // deliberately the highest risk tier, distinct from a live-but-stale
+        // indexer, so a caller can't mistake "we heard nothing" for "we
+        // checked and it's fine."
         riskEvaluation: {
-          riskScore: 4.8,
-          riskTier: 'VERY_LOW_RISK',
-          recommendation: 'PROCEED_AUTOMATIC_PAYMENT'
-        }
+          riskScore: 100,
+          riskTier: 'GATEWAY_UNREACHABLE',
+          recommendation: 'REQUIRE_HUMAN_REVIEW',
+        },
       };
     }
   }
+}
+
+/**
+ * Turns real indexer lag (seconds behind the timestamp of the block The Graph
+ * Gateway actually returned) into a risk tier. Thresholds are conservative:
+ * The Graph's hosted/network indexers typically lag by single-digit seconds
+ * under normal conditions, so anything minutes-old is a genuine anomaly.
+ */
+function computeRiskFromIndexerLag(indexerLagSeconds) {
+  if (indexerLagSeconds == null) {
+    return { riskScore: 50, riskTier: 'UNKNOWN_NO_TIMESTAMP', recommendation: 'PROCEED_WITH_CAUTION' };
+  }
+  if (indexerLagSeconds <= 30) {
+    return { riskScore: Math.round((indexerLagSeconds / 30) * 10), riskTier: 'VERY_LOW_RISK', recommendation: 'PROCEED_AUTOMATIC_PAYMENT' };
+  }
+  if (indexerLagSeconds <= 300) {
+    return { riskScore: 25, riskTier: 'LOW_RISK', recommendation: 'PROCEED_AUTOMATIC_PAYMENT' };
+  }
+  if (indexerLagSeconds <= 1800) {
+    return { riskScore: 65, riskTier: 'ELEVATED_RISK', recommendation: 'PROCEED_WITH_CAUTION' };
+  }
+  return { riskScore: 95, riskTier: 'HIGH_RISK_STALE_INDEXER', recommendation: 'REQUIRE_HUMAN_REVIEW' };
 }

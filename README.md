@@ -84,6 +84,8 @@ The operator authorizes a **$1.00 USDC** budget and 3-minute mission window, the
 * **Identity**: **ENS** (Hierarchical agent namespace pointer `mission.mandate.eth`).
 * **Client & Engine**: Expo Server Runtime (`output: server`), React Native Web, TypeScript, Ethers v6.
 
+Full architecture diagrams (Mission Control loop, judge onboarding, vendor marketplace) are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Our World ID developer-experience feedback is in [`docs/WORLD_ID_FEEDBACK.md`](docs/WORLD_ID_FEEDBACK.md).
+
 ---
 
 ## 🚀 Quick Start

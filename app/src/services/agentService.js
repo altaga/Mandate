@@ -479,6 +479,25 @@ export const AgentService = {
           addLog({ time: ts(), text: `❌ Unknown vendor: ${vendorId}`, type: 'error' });
           return;
         }
+        // Real Graph Network Gateway risk check, gating the payment — not a
+        // hardcoded constant. Derived from how far behind chain head the
+        // subgraph's own indexer actually is on this call.
+        addLog({ time: ts(), text: `Querying The Graph Network Gateway for indexer risk...`, type: 'info' });
+        const graphContext = await GraphService.queryOnchainContext({ walletAddress: env.agentAddress });
+        addLog({
+          time: ts(),
+          text: `The Graph: block #${graphContext.blockNumber}, indexer lag ${graphContext.indexerLagSeconds ?? '?'}s → ${graphContext.riskEvaluation.riskTier}`,
+          type: graphContext.riskEvaluation.riskTier.startsWith('VERY_LOW') || graphContext.riskEvaluation.riskTier === 'LOW_RISK' ? 'success' : 'warning',
+        });
+        if (graphContext.riskEvaluation.recommendation === 'REQUIRE_HUMAN_REVIEW') {
+          addLog({
+            time: ts(),
+            text: `❌ MANDATE HALTED: The Graph indexer risk (${graphContext.riskEvaluation.riskTier}) requires human review before this payment proceeds.`,
+            type: 'error',
+          });
+          return;
+        }
+
         addLog({ time: ts(), text: `⚡ Initiating x402 handshake with ${vendor.name}...`, type: 'info' });
         const challenge = await this.invokeX402Service(vendorId);
         if (challenge.status === 402) {
