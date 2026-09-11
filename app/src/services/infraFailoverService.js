@@ -16,7 +16,6 @@
  */
 
 import { ArcService } from './arcService.js';
-import { GraphService } from './graphService.js';
 import { STATIC_CATALOG_SAFE, SPONSOR_MAP } from '../constants/vendors.js';
 
 const BASE = typeof window !== 'undefined' ? '' : (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8081');
@@ -82,8 +81,16 @@ export async function executeSponsorCall(path) {
 
   try {
     if (sponsorCfg.method === 'subgraphQuery' || sponsorCfg.method === 'blockHeightCheck') {
-      // Real The Graph call
-      const data = await GraphService.queryOnchainContext({});
+      // Real The Graph call — routed through the server, since
+      // GraphService.queryOnchainContext() needs GRAPH_API_KEY, which never
+      // reaches this client-side code (correctly — see SECURITY.md).
+      const res = await fetch(`${BASE}/api/graph/context`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error(`graph/context API ${res.status}`);
+      const data = await res.json();
       return { ok: true, data, source: 'The Graph' };
     }
     if (sponsorCfg.method === 'directRpc') {

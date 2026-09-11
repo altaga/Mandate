@@ -81,10 +81,6 @@ export const CONFIG = {
     FAUCET_URL: 'https://faucet.circle.com',
     EXPLORER_URL: 'https://testnet.arcscan.app',
     CURRENCY: 'USDC',
-    DELEGATED_SPEND: {
-      AUTO_APPROVE_THRESHOLD_USDC: 50.00,
-      REQUIRE_WORLD_STEP_UP_THRESHOLD_USDC: 50.00
-    }
   },
 
 };
