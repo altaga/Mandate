@@ -144,7 +144,12 @@ export function EdgePanels({ lab, children }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  stage: { flex: 1 },
+  // The TRAFFIC/GLITCH tabs sit flush against the viewport edges (see
+  // tabWrapLeft/tabWrapRight below) and are ~TAB_H px wide on screen once
+  // rotated — without this padding they visually clip the first few
+  // characters of any left/right-aligned text in the content underneath
+  // (e.g. "ON-CHAIN VAULT" rendered as "N-CHAIN VAULT").
+  stage: { flex: 1, paddingHorizontal: TAB_H + 8 },
 
   sheet: {
     position: 'absolute', top: 0, bottom: 0,
