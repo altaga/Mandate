@@ -7,24 +7,21 @@
 import { ArcService } from './arcService.js';
 import { GraphService } from './graphService.js';
 import { CONFIG } from '../constants/config.js';
+import { VENDOR_CATALOG } from '../constants/vendors.js';
 
 const baseUrl = typeof window !== 'undefined' ? '' : (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8081');
 const API_URL = `${baseUrl}/api/agent/reason`;
 
-const PROVIDERS = {
-  cloudburst: { id: 'cloudburst', name: 'CloudBurst AI Edge Limiter', cost: 0.0008, reputation: 99.1, specialty: 'Edge Network Ingress' },
-  quickscale: { id: 'quickscale', name: 'QuickScale Spot Compute', cost: 0.0005, reputation: 82.3, specialty: 'Dumb Spot Compute' },
-  alphadb: { id: 'alphadb', name: 'AlphaDB Postgres (Primary)', cost: 0.0045, reputation: 97.2, specialty: 'Primary Database' },
-  // resilientdb stays expensive on purpose — its cost must exceed the $2 authorized
-  // budget so the DATABASE_FAILURE chaos event reliably triggers World ID human escalation.
-  resilientdb: { id: 'resilientdb', name: 'ResilientDB KV Backup', cost: 1.20, reputation: 99.9, specialty: 'Disaster Recovery Storage' },
-  arc_bundler: { id: 'arc_bundler', name: 'Arc RPC Paymaster', cost: 0.0004, reputation: 99.8, specialty: 'Gasless Transaction Relay' },
-  megacompute: { id: 'megacompute', name: 'MegaCompute The Graph Node', cost: 0.0021, reputation: 98.7, specialty: 'Decentralized Data Oracle' },
-  ai_inference: { id: 'ai_inference', name: 'MiniMax Reasoning Engine', cost: 0.0008, reputation: 99.1, specialty: 'Context Parsing' },
-  web_search: { id: 'web_search', name: 'Live Web Search Fact-Checker', cost: 0.0005, reputation: 99.2, specialty: 'Cross-referencing logic' },
-  nexus_oracle: { id: 'nexus_oracle', name: 'Nexus Centralized Price Feed', cost: 0.0015, reputation: 81.2, specialty: 'High Speed Market Data' },
-  twap_oracle: { id: 'twap_oracle', name: 'Decentralized TWAP Oracle', cost: 0.0025, reputation: 99.8, specialty: 'Tamper-Proof Price Feeds' },
-};
+// Single source of truth (vendors.js) — every id here has a real deployed
+// x402 Cloudflare Worker. Previously this was a separate, hand-maintained
+// object that had drifted from vendors.js (missing graph_oracle, and
+// listing alphadb/nexus_oracle/twap_oracle which have no real Worker at all).
+const PROVIDERS = Object.fromEntries(
+  Object.values(VENDOR_CATALOG).map((v) => [
+    v.id,
+    { id: v.id, name: v.name, cost: v.costUsdc, reputation: v.reputation, specialty: v.specialty, recipient: v.recipient },
+  ])
+);
 
 function ts() {
   const now = new Date();
@@ -168,6 +165,24 @@ export const AgentService = {
       return [PROVIDERS.alphadb, PROVIDERS.resilientdb];
     }
     return Object.values(PROVIDERS);
+  },
+
+  // Fetches /api/vendor/reputation (real D1-derived scores where enough
+  // history exists, static catalog otherwise — see reputation+api.js) and
+  // overlays it onto the local PROVIDERS list used for LLM decisions.
+  async getMarketWithLiveReputation() {
+    try {
+      const res = await fetch(`${baseUrl}/api/vendor/reputation`);
+      if (!res.ok) return Object.values(PROVIDERS);
+      const data = await res.json();
+      const liveById = Object.fromEntries((data.vendors || []).map((v) => [v.id, v]));
+      return Object.values(PROVIDERS).map((p) => {
+        const live = liveById[p.id];
+        return live ? { ...p, reputation: live.reputation, reputationSource: live.reputationSource } : p;
+      });
+    } catch {
+      return Object.values(PROVIDERS);
+    }
   },
 
   async mitigateTrafficSpike(callbacks, env, measuredLatency) {
@@ -427,6 +442,12 @@ export const AgentService = {
     const { addLog } = callbacks;
     addLog({ time: ts(), text: `🧠 Mandate-SRE-01: Parsing instruction...`, type: 'info' });
 
+    // Real reputation from the D1 outcomes ledger (written by the deployed
+    // x402 vendor Workers) replaces the static catalog number for any vendor
+    // with enough real logged history — the LLM decides on real track record,
+    // not a fixed constant, whenever one exists.
+    const marketWithLiveReputation = await this.getMarketWithLiveReputation();
+
     try {
       const response = await fetch(`${baseUrl}/api/agent/reason`, {
         method: 'POST',
@@ -435,7 +456,7 @@ export const AgentService = {
           event: 'ADMIN_COMMAND',
           context: commandText,
           budget: env.budget ?? 1.0,
-          providers: Object.values(PROVIDERS),
+          providers: marketWithLiveReputation,
           history
         })
       });
@@ -466,12 +487,14 @@ export const AgentService = {
         }
         addLog({ time: ts(), text: `Dispatching ERC-4337 UserOp on Arc Testnet...`, type: 'info' });
         try {
-          const receipt = await ArcService.executePayment({
-            userId: 'mandate_nl_admin',
-            walletAddress: '0x_admin_mandate_wallet',
+          // Agent-funded (MANDATE_AGENT_PRIVATE_KEY server-side), not the
+          // biometric-customer payment path — there's no enrolled human
+          // customer paying here, the autonomous agent is spending its own
+          // authorized budget.
+          const receipt = await ArcService.executeAgentPayment({
+            vendorWallet: vendor.recipient,
             amountUsdc: vendor.cost,
             itemDescription: `${vendor.name} — Admin Commanded (NL Agent)`,
-            biometricVerificationId: `mandate_admin_${Date.now()}`
           });
           addLog({ time: ts(), text: `💸 ${vendor.cost} USDC → ${vendor.name}`, type: 'payment' });
           addLog({ time: ts(), text: `Tx: ${receipt.txHash}`, type: 'hash' });

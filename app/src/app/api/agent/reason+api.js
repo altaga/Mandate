@@ -104,18 +104,16 @@ Respond with valid JSON:
   "reply": "Short natural language summary for Mission Control chat log"
 }`;
     } else if (event === 'ADMIN_COMMAND') {
-      userMessage = `You are Mandate-SRE-01, an autonomous AI Site Reliability Engineer for a live Biometric Face ID POS payment system.
-You speak as Mandate-SRE-01. Never call yourself "NL Admin Agent".
-You have bounded authority to manage the following server infrastructure on behalf of the human admin:
+      const catalogLines = (providers || [])
+        .map((p) => `- ${p.id}: ${p.name} ($${p.cost}/incident, ${p.reputation}% rep${p.reputationSource === 'live_d1' ? ', LIVE measured' : ', static estimate'}) - ${p.specialty || ''}`)
+        .join('\n') || '- (no vendor catalog provided)';
 
-LIVE SERVER CATALOG:
-- cloudburst: CloudBurst AI Ingress Limiter ($0.08/incident, 99.1% rep) - Edge traffic & compute scaling
-- megacompute: MegaCompute High-Throughput Cluster ($0.21/incident, 98.7% rep) - Heavy compute
-- resilientdb: ResilientDB Failover Storage ($1.20/incident, 99.9% rep) - Database disaster recovery
-- arc_bundler: Gasless ERC-4337 Bundler ($0.04/incident, 99.8% rep) - Gasless transaction relay
-- web_search: Live Web Search Service ($0.05/incident, 99.2% rep) - External world knowledge
-- ai_inference: MiniMax LLM Inference ($0.08/incident, 99.1% rep) - AI code/config generation
-- quickscale: QuickScale Spot Compute ($0.05/incident, 82.3% rep) - Cheap unguaranteed compute
+      userMessage = `You are Mandate-SRE-01, an autonomous AI Site Reliability Engineer keeping real infrastructure online under a bounded USDC Mandate.
+You speak as Mandate-SRE-01. Never call yourself "NL Admin Agent".
+You have bounded authority to manage the following server infrastructure on behalf of the human admin. Reject any vendor below 95% reputation unless it is the only option and there is a genuine emergency.
+
+LIVE SERVER CATALOG (reputation marked LIVE comes from real logged outcomes, not an estimate):
+${catalogLines}
 
 ACTIONS YOU CAN TAKE:
 - HIRE_VENDOR: Pay for and activate a vendor from the catalog

@@ -13,25 +13,37 @@
 
 import { withLabGlitch } from '../../../server/withLabGlitch.js';
 import { VENDOR_CATALOG } from '../../../constants/vendors.js';
+import { getLiveVendorReputation } from '../../../utilsAPI/vendorReputationD1.js';
 
 export async function GET(request) {
   return withLabGlitch(request, 'reputation', async () => {
-    const vendors = Object.values(VENDOR_CATALOG).map((v) => ({
-      id: v.id,
-      name: v.name,
-      reputation: v.reputation,
-      costUsdc: v.costUsdc,
-      specialty: v.specialty,
-      normalLatencyMs: v.normalLatencyMs,
-      maxSlaLatencyMs: v.maxSlaLatencyMs,
-      sponsor: v.sponsor || false,
-      sponsorFor: v.sponsorFor || [],
-      // Derived trust tier
-      trustTier: v.reputation >= 99 ? 'ELITE'
-                : v.reputation >= 95 ? 'TRUSTED'
-                : v.reputation >= 85 ? 'PROVISIONAL'
-                : 'RESTRICTED',
-    }));
+    const live = await getLiveVendorReputation();
+
+    const vendors = Object.values(VENDOR_CATALOG).map((v) => {
+      const liveStats = live[v.id];
+      // Real, D1-derived reputation replaces the static catalog number once a
+      // vendor has enough real logged outcomes; below that it's honestly
+      // reported as the static fallback, not silently blended.
+      const reputation = liveStats ? liveStats.successRate : v.reputation;
+      return {
+        id: v.id,
+        name: v.name,
+        reputation,
+        reputationSource: liveStats ? 'live_d1' : 'static_catalog',
+        liveSampleSize: liveStats?.sampleSize || 0,
+        liveAvgLatencyMs: liveStats?.avgLatencyMs ?? null,
+        costUsdc: v.costUsdc,
+        specialty: v.specialty,
+        normalLatencyMs: v.normalLatencyMs,
+        maxSlaLatencyMs: v.maxSlaLatencyMs,
+        sponsor: v.sponsor || false,
+        sponsorFor: v.sponsorFor || [],
+        trustTier: reputation >= 99 ? 'ELITE'
+                  : reputation >= 95 ? 'TRUSTED'
+                  : reputation >= 85 ? 'PROVISIONAL'
+                  : 'RESTRICTED',
+      };
+    });
 
     return Response.json({
       ok: true,
