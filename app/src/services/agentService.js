@@ -498,6 +498,32 @@ export const AgentService = {
           return;
         }
 
+        // Bounded Economic Authority: the agent cannot spend more than its own
+        // real, currently-granted budget. If this hire costs more than that,
+        // it cannot silently top itself up — a real human has to prove
+        // presence via a real World ID Selfie Check before the treasury will
+        // grant the shortfall. This is the "Mission Control human-escalation
+        // gate" — real, not a decorative constant.
+        const currentBudget = Number(env.budget || 0);
+        if (Number(vendor.cost) > currentBudget) {
+          addLog({
+            time: ts(),
+            text: `⚠ Authority exceeded: ${vendor.name} costs $${vendor.cost} USDC but only $${currentBudget.toFixed(4)} USDC is authorized.`,
+            type: 'escalation',
+          });
+          if (!env.requestHumanEscalation) {
+            addLog({ time: ts(), text: `❌ MANDATE HALTED: no human escalation channel available in this session.`, type: 'error' });
+            return;
+          }
+          addLog({ time: ts(), text: `Requesting World ID Selfie Check to step up authorized budget...`, type: 'escalation' });
+          const stepUp = await env.requestHumanEscalation(vendor);
+          if (!stepUp || !stepUp.approved) {
+            addLog({ time: ts(), text: `❌ MANDATE HALTED: human escalation declined or failed — no funds moved.`, type: 'error' });
+            return;
+          }
+          addLog({ time: ts(), text: `✓ Human verified via World ID — budget stepped up, resuming hire...`, type: 'success' });
+        }
+
         addLog({ time: ts(), text: `⚡ Initiating x402 handshake with ${vendor.name}...`, type: 'info' });
         const challenge = await this.invokeX402Service(vendorId);
         if (challenge.status === 402) {

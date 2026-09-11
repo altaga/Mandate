@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ShieldAlert, Terminal, Send, Server, Activity, Wallet } from 'lucide-react-native';
+import { IDKitRequestWidget, selfieCheckLegacy } from '@worldcoin/idkit';
 import { AgentService } from '../../services/agentService';
 import { ArcService } from '../../services/arcService';
 import { AGENT_NAME, getPreMandateReply } from '../../services/mandateChatPolicy';
+import { CONFIG } from '../../constants/config';
 import { useAgentTreasury } from '../../hooks/useAgentTreasury';
 import { useInfraHealth } from '../../hooks/useInfraHealth';
 import { TreasuryTab } from '../../features/mandate-control/TreasuryTab';
@@ -105,6 +107,68 @@ export default function DemoChatScreen() {
   };
 
   const agentCallbacks = () => ({ addLog });
+
+  // ── Human escalation (World ID Selfie Check step-up) ─────────────────────
+  // Real gate, not decorative: an autonomous hire that costs more than the
+  // agent's currently-granted budget cannot silently top itself up. A human
+  // must prove presence via a real World ID Selfie Check before the treasury
+  // grants the shortfall — see agentService.js's HIRE_VENDOR branch, which
+  // calls env.requestHumanEscalation(vendor) and awaits its resolution.
+  const [escalation, setEscalation] = useState({
+    open: false, rpContext: null, dynamicAction: 'mandate-operator-auth', vendor: null,
+  });
+  const escalationRef = useRef({ resolver: null });
+
+  const resolveEscalation = useCallback((result) => {
+    const { resolver } = escalationRef.current;
+    escalationRef.current.resolver = null;
+    setEscalation({ open: false, rpContext: null, dynamicAction: 'mandate-operator-auth', vendor: null });
+    if (resolver) resolver(result);
+  }, []);
+
+  const requestHumanEscalation = useCallback(async (vendor) => {
+    try {
+      const res = await fetch('/api/sign');
+      if (!res.ok) throw new Error('Failed to fetch World ID signature');
+      const data = await res.json();
+      return new Promise((resolve) => {
+        escalationRef.current.resolver = resolve;
+        setEscalation({ open: true, rpContext: data, dynamicAction: data.action || 'mandate-operator-auth', vendor });
+      });
+    } catch (err) {
+      addLog({ text: `❌ Could not start World ID step-up: ${err.message}`, type: 'error' });
+      return { approved: false, error: err.message };
+    }
+  }, []);
+
+  useEffect(() => { envRef.current.requestHumanEscalation = requestHumanEscalation; }, [requestHumanEscalation]);
+
+  const handleEscalationVerify = async (proof) => {
+    const res = await fetch('/api/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proof, action: escalation.dynamicAction }),
+    });
+    const result = await res.json();
+    if (!result.success) {
+      throw new Error(`World ID verification failed: ${JSON.stringify(result.error || result)}`);
+    }
+  };
+
+  const handleEscalationSuccess = async () => {
+    const vendor = escalationRef.current.resolver ? escalation.vendor : null;
+    addLog({ text: '✓ World ID Selfie Check verified — human presence confirmed', type: 'success' });
+    if (!vendor) {
+      resolveEscalation({ approved: false, error: 'Escalation context lost' });
+      return;
+    }
+    // Step up by exactly the shortfall (min $1, matching the architecture
+    // doc's step-up granularity) — a real on-chain treasury grant, not a
+    // client-side counter bump.
+    const shortfall = Math.max(1, Number((Number(vendor.cost) - (envRef.current.budget || 0)).toFixed(6)));
+    const applied = await handleAllocateFromTreasury(shortfall);
+    resolveEscalation(applied.ok ? { approved: true } : { approved: false, error: applied.error });
+  };
 
   const handleAllocateFromTreasury = async (amount) => {
     if (treasuryStatus === 'loading') {
@@ -458,6 +522,25 @@ export default function DemoChatScreen() {
         )}
       </View>
       </EdgePanels>
+
+      {Platform.OS === 'web' && typeof IDKitRequestWidget === 'function' && escalation.rpContext && (
+        <IDKitRequestWidget
+          open={escalation.open}
+          onOpenChange={(open) => { if (!open) resolveEscalation({ approved: false }); }}
+          app_id={CONFIG.WORLD_ID.APP_ID}
+          action={escalation.dynamicAction}
+          rp_context={escalation.rpContext}
+          allow_legacy_proofs={true}
+          environment={CONFIG.WORLD_ID.ENVIRONMENT}
+          preset={selfieCheckLegacy()}
+          onError={(err) => {
+            console.log('Escalation IDKit Error:', err);
+            resolveEscalation({ approved: false, error: err?.message });
+          }}
+          onSuccess={handleEscalationSuccess}
+          handleVerify={handleEscalationVerify}
+        />
+      )}
     </SafeAreaView>
   );
 }
