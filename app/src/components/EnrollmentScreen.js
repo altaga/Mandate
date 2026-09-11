@@ -18,8 +18,8 @@ import WebcamCapture from './WebcamCapture';
 export const EnrollmentScreen = ({ onEnrollSuccess }) => {
   const { currentUser, updateUserProfile } = useMandate();
 
-  const [name, setName] = useState('Victor Alonso');
-  const [email, setEmail] = useState('v.a.i@hotmail.com');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [generatedWallet, setGeneratedWallet] = useState(currentUser?.walletAddress || null);
   const [loading, setLoading] = useState(false);
   const [captured, setCaptured] = useState(false);
