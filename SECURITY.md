@@ -64,38 +64,88 @@ loaded gun for the next person who adds a client-side usage without
 realizing what that prefix does. Gone from both `.env.example` and the real
 `.env`.
 
-## Env var reference
+## Second pass: purging unused vars entirely
+
+A follow-up request was stricter: don't just confirm nothing leaks, remove
+anything not actually used, and demote anything not genuinely needed by the
+browser. Every var was checked by tracing its actual consumer (not just a
+literal grep for the name — `constants/config.js`'s `getEnv()` builds the
+`EXPO_PUBLIC_` fallback name dynamically, so some real client dependencies
+don't show up as a literal string match; each candidate was traced to its
+`CONFIG.*` field and then to whether that field is read from a
+client-rendered file).
+
+**Removed entirely** (zero consumers anywhere, client or server) — from both
+`.env` and `.env.example`:
+`ARC_CHAIN_ID` / `EXPO_PUBLIC_ARC_CHAIN_ID` (the chain ID is hardcoded
+`5042002` everywhere it's actually needed, this config field was never
+read), `ARC_EXPLORER_URL` (the explorer URL is hardcoded in `config.js`
+instead), `CLOUDFLARE_ACCESS_KEY` / `CLOUDFLARE_SECRET_ACCESS_KEY` /
+`CLOUDFLARE_S3_API_ENDPOINT` (R2 credentials with no code path using them),
+`EXPO_PUBLIC_TOKEN_CIRBTC` / `_EURC` / `_USDC` (no `TOKENS` config block
+exists to consume them), `SUPABASE_URL` / `SUPABASE_ANON_KEY` /
+`SUPABASE_SECRET_KEY` (see correction below — there is no real Supabase
+usage left at all), `SUPERADMIN_TOKEN`, `WORLD_SIGNER_ADDRESS`, and all 8
+`VENDOR_KEY_*` vars (`AI_INFERENCE`, `ARC_BUNDLER`, `CLOUDBURST`,
+`GRAPH_ORACLE`, `MEGACOMPUTE`, `QUICKSCALE`, `RESILIENTDB`, `WEB_SEARCH`).
+
+**Correction to this doc's earlier claim:** an earlier version of this file
+said the Supabase health-check ping in `infraFailoverService.js` still
+needed `SUPABASE_URL`. That was wrong — grepped the whole real codebase for
+any actual `fetch()` to a Supabase URL and found none. The only two places
+that ever read `SUPABASE_URL`/`SUPABASE_ANON_KEY` were `health+api.js`'s
+`*_LOADED` boolean flags, which reported nothing meaningful once nothing
+downstream used the values. Removed those two flags along with the vars.
+
+**Kept, confirmed genuinely needed client-side** despite showing zero literal
+matches for the `EXPO_PUBLIC_` name itself (traced through `getEnv()`'s
+dynamic fallback to real usage in client components/hooks):
+`EXPO_PUBLIC_WORLD_APP_ID` / `_RP_ID` / `_ENVIRONMENT` (the IDKit widget in
+`EnrollmentScreen.js`/`world-test.js`/`add-user.js` needs these as literal
+render props — not secrets, they're public protocol identifiers World's own
+docs require to be client-visible), `EXPO_PUBLIC_MANDATE_BUYER_ADDRESS`
+(used by `mandateModule.js`/`biometricService.js`, part of the judge
+onboarding flow, not the deleted POS payment flow it looks adjacent to),
+`EXPO_PUBLIC_MANDATE_MERCHANT_ADDRESS` (used by `graphService.js`/
+`agentService.js`, both client-side), `EXPO_PUBLIC_MANDATE_PAYMASTER_ADDRESS`
+(used by `arcService.js`, client-side).
+
+## Env var reference (post-purge)
 
 See `.env.example` for the full authoritative list with placeholder values.
 Categories:
 
-- **Server-only secrets** (never referenced by client code, verified above):
-  all `*_PRIVATE_KEY`, `ADMIN_API_KEY`, `WORLD_SECRET_KEY`, `GRAPH_API_KEY`,
-  `SUPABASE_SECRET_KEY`, `CLOUDFLARE_*`, `X402_GATEWAY_KEY`,
-  `RED_TEAM_BYPASS_KEY`, `SUPERADMIN_TOKEN`, `MINIMAX_API_KEY`.
+- **Server-only secrets** (never referenced by client code, verified against
+  a real production bundle): all `*_PRIVATE_KEY`, `ADMIN_API_KEY`,
+  `WORLD_SECRET_KEY`, `GRAPH_API_KEY`, `CLOUDFLARE_API_TOKEN`,
+  `CLOUDFLARE_ACCOUNT_ID`, `X402_GATEWAY_KEY`, `RED_TEAM_BYPASS_KEY`,
+  `MINIMAX_API_KEY`.
 - **Server-only, not secret** (URLs/IDs with no auth power of their own):
-  `ARC_RPC_URL`, `ARC_ENTRY_POINT`, `ARC_EXPLORER_URL`, `GRAPH_SUBGRAPH_ID`,
-  `SUPABASE_URL`, `WORLD_RP_ID`, `WORLD_APP_ID` (server copy),
+  `ARC_RPC_URL`, `ARC_ENTRY_POINT`, `GRAPH_SUBGRAPH_ID`, `WORLD_RP_ID`,
+  `WORLD_APP_ID` (server copy), `CLOUDFLARE_WORKER_SUBDOMAIN`,
   `*_ADDRESS` variants, `VENDOR_ADDR_*`.
-- **Legitimately public** (`EXPO_PUBLIC_*`, safe by design — addresses,
-  chain IDs, World's own App/RP IDs which its docs require to be
-  client-visible for the IDKit widget): `EXPO_PUBLIC_ARC_CHAIN_ID`,
-  `EXPO_PUBLIC_ARC_RPC_URL`, `EXPO_PUBLIC_MANDATE_*_ADDRESS`,
-  `EXPO_PUBLIC_TOKEN_*`, `EXPO_PUBLIC_WORLD_APP_ID`,
+- **Legitimately public** (`EXPO_PUBLIC_*`, safe by design, each one traced
+  to a real client-side consumer above): `EXPO_PUBLIC_ARC_RPC_URL`,
+  `EXPO_PUBLIC_MANDATE_AGENT_ADDRESS`, `EXPO_PUBLIC_MANDATE_TREASURY_ADDRESS`,
+  `EXPO_PUBLIC_MANDATE_BUYER_ADDRESS`, `EXPO_PUBLIC_MANDATE_MERCHANT_ADDRESS`,
+  `EXPO_PUBLIC_MANDATE_PAYMASTER_ADDRESS`, `EXPO_PUBLIC_WORLD_APP_ID`,
   `EXPO_PUBLIC_WORLD_RP_ID`, `EXPO_PUBLIC_WORLD_ENVIRONMENT`.
-- **Present but unused** — found during this audit, not removed (server-only,
-  so not a client-exposure risk, just dead config): `VENDOR_KEY_*` (8 vars),
-  `SUPABASE_ANON_KEY`/`SUPABASE_URL` (the Supabase health-check ping in
-  `infraFailoverService.js` only needs the URL, not the anon key).
 
-## One disclosure from this audit
+Nothing is listed as "present but unused" anymore — that category was
+purged entirely in this pass.
 
-While grepping `.env` during this review, a shell command printed several
-real values (including `SUPABASE_SECRET_KEY`) directly into this session's
-own terminal output/transcript — not to any third party, but worth flagging
-plainly. Out of caution, rotating that Supabase service-role key is a
-reasonable thing to do even though its blast radius is small (the
-`enrolled_users` table it guards is no longer used by any live code path).
+## Disclosures from this audit
+
+Two, both the same category of mistake and both worth being upfront about
+rather than quietly not mentioning: while auditing `.env` in this session,
+plain `grep`/`cat`-style commands printed real values directly into this
+session's own terminal output/transcript twice — once catching
+`SUPABASE_SECRET_KEY` (now moot, that var and the table it guarded are both
+gone), and once catching `CLOUDFLARE_ACCESS_KEY` /
+`CLOUDFLARE_SECRET_ACCESS_KEY` (R2 credentials, now also removed since
+nothing used them). Neither went to a third party, but a credential that
+sat in a terminal transcript is reasonable to rotate out of caution even
+though removing the unused vars already closes the practical exposure.
 
 ## Known limitation, not fixed here
 

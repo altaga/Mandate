@@ -21,8 +21,6 @@ export async function GET(request) {
     status: 'online',
     timestamp: new Date().toISOString(),
     environment_variables: {
-      SUPABASE_URL_LOADED: !!process.env.SUPABASE_URL,
-      SUPABASE_ANON_KEY_LOADED: !!process.env.SUPABASE_ANON_KEY,
       ADMIN_API_KEY_LOADED: !!process.env.ADMIN_API_KEY,
       GRAPH_API_KEY_LOADED: !!process.env.GRAPH_API_KEY,
       ARC_RPC_URL_LOADED: !!process.env.ARC_RPC_URL,
