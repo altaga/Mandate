@@ -12,7 +12,7 @@
 import { getAllHealth } from '../../../server/infraHealthStore.js';
 
 export async function GET() {
-  const services = getAllHealth();
+  const services = await getAllHealth();
 
   const overallOk = services.every((s) => s.mode === 'layer0' && s.severity === 'ok');
   const activeFailovers = services.filter((s) => s.mode === 'sponsor').length;

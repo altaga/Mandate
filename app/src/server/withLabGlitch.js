@@ -44,7 +44,7 @@ export async function withLabGlitch(request, path, handler, sponsorFallback) {
     // Pure if-decision: an active (or recovering) sponsor already covers this
     // path, so actually serve the client through it instead of surfacing the
     // raw Layer 0 failure.
-    const mode = getServiceHealth(path)?.mode;
+    const mode = (await getServiceHealth(path))?.mode;
     if (sponsorFallback && (mode === 'sponsor' || mode === 'recovering')) {
       try {
         const sponsorResponse = await sponsorFallback();

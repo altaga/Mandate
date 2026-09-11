@@ -10,7 +10,7 @@ export async function POST(request) {
   try {
     const { path, sponsor, cost } = await request.json();
     if (!path) return Response.json({ error: 'path required' }, { status: 400 });
-    markSponsorActive(path, sponsor || 'Unknown', Number(cost) || 0);
+    await markSponsorActive(path, sponsor || 'Unknown', Number(cost) || 0);
     return Response.json({ ok: true, path, sponsor, cost });
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });

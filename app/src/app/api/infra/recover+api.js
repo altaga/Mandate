@@ -10,7 +10,7 @@ export async function POST(request) {
   try {
     const { path } = await request.json();
     if (!path) return Response.json({ error: 'path required' }, { status: 400 });
-    markLayer0Recovered(path);
+    await markLayer0Recovered(path);
     return Response.json({ ok: true, path });
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });
