@@ -7,7 +7,7 @@ export async function POST(request) {
 
 async function handleReason(request) {
   try {
-    const { event, context, budget, providers } = await request.json();
+    const { event, context, budget, providers, history } = await request.json();
 
     const apiKey = process.env.MINIMAX_API_KEY;
     const baseURL = process.env.MINIMAX_BASE_URL || 'https://api.minimax.io/anthropic';
@@ -134,11 +134,17 @@ Respond with a valid JSON object in this EXACT format:
 Be concise and decisive.`;
     }
 
+    // Only the NL Admin Manager (ADMIN_COMMAND) is a multi-turn conversation;
+    // the chaos-event reasoning calls are one-shot and stay single-message.
+    const conversationMessages = event === 'ADMIN_COMMAND' && Array.isArray(history)
+      ? [...history, { role: "user", content: userMessage }]
+      : [{ role: "user", content: userMessage }];
+
     const response = await client.messages.create({
       model: "MiniMax-M3",
       max_tokens: 1000,
       system: systemPrompt,
-      messages: [{ role: "user", content: userMessage }],
+      messages: conversationMessages,
     });
 
     let rawText = "";

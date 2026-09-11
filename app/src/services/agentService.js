@@ -423,10 +423,10 @@ export const AgentService = {
     this.isMitigating = false;
   },
 
-  async processAdminCommand(callbacks, env, commandText) {
+  async processAdminCommand(callbacks, env, commandText, history = []) {
     const { addLog } = callbacks;
     addLog({ time: ts(), text: `🧠 Mandate-SRE-01: Parsing instruction...`, type: 'info' });
-    
+
     try {
       const response = await fetch(`${baseUrl}/api/agent/reason`, {
         method: 'POST',
@@ -435,7 +435,8 @@ export const AgentService = {
           event: 'ADMIN_COMMAND',
           context: commandText,
           budget: env.budget ?? 1.0,
-          providers: Object.values(PROVIDERS)
+          providers: Object.values(PROVIDERS),
+          history
         })
       });
       

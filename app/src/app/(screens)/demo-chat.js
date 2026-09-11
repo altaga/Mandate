@@ -167,7 +167,15 @@ export default function DemoChatScreen() {
       return;
     }
 
-    AgentService.processAdminCommand(agentCallbacks(), envRef.current, text);
+    const history = messages
+      .filter((m) => m.role === 'user' || (m.role === 'system' && m.type === 'agent'))
+      .map((m) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.role === 'user' ? m.text : m.text.replace(`${AGENT_NAME}: `, ''),
+      }))
+      .slice(-20);
+
+    AgentService.processAdminCommand(agentCallbacks(), envRef.current, text, history);
   };
 
   return (
