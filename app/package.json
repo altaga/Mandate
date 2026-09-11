@@ -14,7 +14,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "set BROWSER=none&& expo start --web",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "postinstall": "node ./scripts/patch-idkit-wasm-url.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
