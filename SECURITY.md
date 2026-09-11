@@ -110,6 +110,38 @@ onboarding flow, not the deleted POS payment flow it looks adjacent to),
 `agentService.js`, both client-side), `EXPO_PUBLIC_MANDATE_PAYMASTER_ADDRESS`
 (used by `arcService.js`, client-side).
 
+## Third pass: a real private-key-exfiltration endpoint
+
+`GET /api/db/users` (only CORS-gated — same non-authentication caveat as
+everywhere else) returned every enrolled user's **full** D1 record,
+including `agentKey` (a real ERC-4337 owner private key generated at
+enrollment) and `faceVector`. Confirmed by tracing every consumer: nothing
+live needs either field from this HTTP route. `recognize+api.js` does real
+server-side face matching, but calls `getAllEnrolledUsersFromDb()` directly
+(not this HTTP route) — it still gets the real vector. The only client-side
+code that ever read `faceVector` back (`biometricService.js`'s
+`identifyUserByFaceVector`, a 1-tap face-login flow) and the only code that
+ever read `agentKey` back (the deleted POS `payment/execute` route) both
+have zero remaining callers. Fixed by stripping both fields from the
+response unconditionally — `db/users+api.js`'s `toPublicProfile()`.
+
+No real user had enrolled yet when this was found (verified: the live
+endpoint returned an empty list), so nothing needs rotating from this one.
+Deployed the fix to production immediately rather than batching it with
+other work, since every minute this endpoint stayed live increased the
+odds of a real judge's private key being captured.
+
+**Lower-severity, not fixed here:** enrolled-user IDs are
+`'usr_' + Date.now().toString(36)` (`biometricService.js`) — a predictable
+timestamp, not a random one. `upsertEnrolledUser`'s `ON CONFLICT(id) DO
+UPDATE` means a guessed/nearby ID could overwrite another user's D1 record.
+Checked the actual blast radius: it's data-integrity only, not fund theft —
+the Mandate budget grant flow (`ArcService.grantFromTreasury`) always pays
+into the shared `MANDATE_AGENT_ADDRESS`, never anything read from this
+table, so corrupting a record can't redirect real money. Worth a real ID
+scheme and a write-ownership check eventually, not urgent enough to block
+on right now.
+
 ## Env var reference (post-purge)
 
 See `.env.example` for the full authoritative list with placeholder values.
