@@ -2,9 +2,15 @@ import { BiometricService } from '../../services/biometricService.js';
 import { ServerBiometricService } from '../../services/serverBiometricService.js';
 import { getAllEnrolledUsersFromDb } from '../../utilsAPI/enrolledUsersAdmin.js';
 import { CONFIG } from '../../constants/config.js';
+import { checkRateLimit, rateLimitResponse } from '../../utilsAPI/rateLimitGuard.js';
 
 export async function POST(request) {
   try {
+    const { limited, retryAfterSeconds } = await checkRateLimit({
+      request, route: 'recognize', limit: 20, windowMs: 60 * 1000,
+    });
+    if (limited) return rateLimitResponse(retryAfterSeconds);
+
     const body = await request.json();
     const { imageBase64, threshold: requestedThreshold } = body;
 

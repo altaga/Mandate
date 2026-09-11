@@ -10,6 +10,7 @@
 // recognize+api.js, which calls getAllEnrolledUsersFromDb() directly rather
 // than going through this HTTP route — it still gets the real vector.
 import { getAllEnrolledUsersFromDb, upsertEnrolledUser } from '../../../utilsAPI/enrolledUsersAdmin.js';
+import { checkRateLimit, rateLimitResponse } from '../../../utilsAPI/rateLimitGuard.js';
 
 function toPublicProfile({ agentKey, faceVector, ...safe }) {
   return safe;
@@ -27,6 +28,11 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const { limited, retryAfterSeconds } = await checkRateLimit({
+      request, route: 'db/users', limit: 10, windowMs: 5 * 60 * 1000,
+    });
+    if (limited) return rateLimitResponse(retryAfterSeconds);
+
     const profile = await request.json();
     await upsertEnrolledUser(profile);
     return Response.json({ success: true });

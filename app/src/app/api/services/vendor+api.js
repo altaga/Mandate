@@ -6,6 +6,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { verifyRealVendorPayment } from "../../../utilsAPI/vendorPaymentGuard.js";
+import { checkRateLimit, rateLimitResponse } from "../../../utilsAPI/rateLimitGuard.js";
 
 const VENDOR_CATALOG = {
   ai_inference: {
@@ -113,6 +114,11 @@ const VENDOR_CATALOG = {
 
 export async function POST(request) {
   try {
+    const { limited, retryAfterSeconds } = await checkRateLimit({
+      request, route: 'services/vendor', limit: 30, windowMs: 60 * 1000,
+    });
+    if (limited) return rateLimitResponse(retryAfterSeconds);
+
     const body = await request.json().catch(() => ({}));
     const vendorKey = (body.vendor || "cloudburst").toLowerCase();
     const vendor = VENDOR_CATALOG[vendorKey] || VENDOR_CATALOG.cloudburst;

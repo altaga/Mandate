@@ -134,7 +134,11 @@ export class BiometricService {
   static async enrollBiometrics({ name, email, walletAddress, imageSample, worldNullifier, precomputedVector }) {
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    const userId = 'usr_' + Date.now().toString(36);
+    // Random, not derived from time: a predictable 'usr_' + timestamp id let a
+    // guessed/nearby id overwrite another user's D1 record via
+    // upsertEnrolledUser's ON CONFLICT(id) DO UPDATE. crypto.randomUUID() is
+    // 128 bits of randomness — nothing to guess.
+    const userId = 'usr_' + crypto.randomUUID();
     const seed = imageSample || `${name}_${email}`;
     const faceVector = precomputedVector || this.extract128dFaceVector(seed);
     const biometricHash = 'bio_vec128_' + Math.random().toString(36).substring(2, 12);

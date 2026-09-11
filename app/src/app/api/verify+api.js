@@ -1,5 +1,12 @@
+import { checkRateLimit, rateLimitResponse } from '../../utilsAPI/rateLimitGuard.js';
+
 export async function POST(request) {
   try {
+    const { limited, retryAfterSeconds } = await checkRateLimit({
+      request, route: 'verify', limit: 20, windowMs: 60 * 1000,
+    });
+    if (limited) return rateLimitResponse(retryAfterSeconds);
+
     const body = await request.json();
     const { proof, action, signal } = body;
     const appId = process.env.WORLD_APP_ID || process.env.WORLD_RP_ID;

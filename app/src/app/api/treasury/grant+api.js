@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { sendSponsoredTransfer } from '../../../server/erc4337';
+import { checkRateLimit, rateLimitResponse } from '../../../utilsAPI/rateLimitGuard';
 
 // This route is reachable directly from the browser (Mission Control's grant
 // flow and the judge-facing Add User to Mandate screen both call it), so it
@@ -22,6 +23,11 @@ function parseGrantAmount(raw) {
 
 export async function POST(request) {
   try {
+    const { limited, retryAfterSeconds } = await checkRateLimit({
+      request, route: 'treasury/grant', limit: 3, windowMs: 5 * 60 * 1000,
+    });
+    if (limited) return rateLimitResponse(retryAfterSeconds);
+
     const body = await request.json();
     const amountUsdc = parseGrantAmount(body?.amountUsdc);
 

@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { sendSponsoredTransfer } from '../../../server/erc4337';
 import { VENDOR_CATALOG, SPONSOR_MAP } from '../../../constants/vendors';
+import { checkRateLimit, rateLimitResponse } from '../../../utilsAPI/rateLimitGuard';
 
 /**
  * @file agent-pay+api.js
@@ -47,6 +48,11 @@ function buildAllowlist() {
 
 export async function POST(request) {
   try {
+    const { limited, retryAfterSeconds } = await checkRateLimit({
+      request, route: 'payment/agent-pay', limit: 15, windowMs: 60 * 1000,
+    });
+    if (limited) return rateLimitResponse(retryAfterSeconds);
+
     const body = await request.json();
     const vendorWallet = String(body?.vendorWallet || '');
     const itemDescription = body?.itemDescription || 'Mandate agent vendor payment';
