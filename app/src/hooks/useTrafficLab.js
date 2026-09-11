@@ -32,16 +32,27 @@ export function useTrafficLab() {
   // more recently. That let a stale poll (in flight before the user clicked)
   // silently revert a just-applied fault back to its old value, so the panel
   // looked like the click did nothing even though the server had it right.
-  // Every request now stamps a ticket when it STARTS; a response is only
-  // applied if no newer request has started since.
+  //
+  // Fix: each request gets a ticket when it STARTS (glitchSeqRef, a pure
+  // counter), but a response is only applied if its ticket is newer than the
+  // last one actually APPLIED (glitchAppliedRef) — not newer than the latest
+  // one merely issued. Comparing against "latest issued" instead of "latest
+  // applied" was a real bug in the first version of this fix: once any newer
+  // poll had started (which happens constantly on a 900ms interval), every
+  // in-flight response's ticket would already be stale by the time it
+  // resolved, so nothing was ever applied at all.
   const glitchSeqRef = useRef(0);
+  const glitchAppliedRef = useRef(0);
 
   const refreshStats = useCallback(async () => {
     const ticket = ++glitchSeqRef.current;
     try {
       const next = await TrafficLabService.fetchStats();
       setStats(next);
-      if (next.glitch?.mode && ticket === glitchSeqRef.current) setGlitchMode(next.glitch.mode);
+      if (next.glitch?.mode && ticket > glitchAppliedRef.current) {
+        glitchAppliedRef.current = ticket;
+        setGlitchMode(next.glitch.mode);
+      }
       setError('');
     } catch (err) {
       setError(err.message);
@@ -97,7 +108,10 @@ export function useTrafficLab() {
     const ticket = ++glitchSeqRef.current;
     try {
       const next = await TrafficLabService.setGlitch(mode, 800);
-      if (ticket === glitchSeqRef.current) setGlitchMode(next.mode);
+      if (ticket > glitchAppliedRef.current) {
+        glitchAppliedRef.current = ticket;
+        setGlitchMode(next.mode);
+      }
       setError('');
     } catch (err) {
       setError(err.message);
