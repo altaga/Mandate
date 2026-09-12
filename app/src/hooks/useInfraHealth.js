@@ -18,9 +18,16 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { pollInfraHealth, executeFailover, executeRecovery } from '../services/infraFailoverService.js';
+import { pollInfraHealth, executeFailover, executeRecovery, beatOwnServices } from '../services/infraFailoverService.js';
 
 const POLL_INTERVAL = 3000;
+// One service touched per beat, round-robin over three, so each is checked
+// roughly every 4.5s on its own — independent of whether anyone has the
+// Traffic panel open. That lands detection (2-3 consecutive errors,
+// per-path thresholds in constants/vendors.js) around 9-14s after a fault
+// starts with nothing else running, and faster when the simulator is adding
+// load on top.
+const HEARTBEAT_INTERVAL = 1500;
 
 export function useInfraHealth({ budget, onSpend, onFailoverEvent, onRecoveryEvent } = {}) {
   const [services, setServices] = useState([]);
@@ -83,6 +90,26 @@ export function useInfraHealth({ budget, onSpend, onFailoverEvent, onRecoveryEve
       if (timer) clearTimeout(timer);
     };
   }, [poll]);
+
+  // The agent's own pulse, on its own schedule — this is what makes its
+  // awareness of Layer 0 independent of the Traffic Simulator. Chained
+  // (not setInterval) so a slow beat can never stack up on the next one.
+  useEffect(() => {
+    let alive = true;
+    let timer = null;
+
+    const beat = async () => {
+      if (!alive) return;
+      await beatOwnServices();
+      if (alive) timer = setTimeout(beat, HEARTBEAT_INTERVAL);
+    };
+
+    beat();
+    return () => {
+      alive = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
 
   return {
     services,

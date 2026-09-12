@@ -37,6 +37,52 @@ export async function pollInfraHealth() {
   }
 }
 
+// ─── Independent Layer 0 heartbeat ────────────────────────────────────────────
+// The agent has to be able to notice its own infrastructure degrading by
+// itself. Polling /api/infra/status only reads back health that something
+// else's requests produced — and the only thing reliably generating requests
+// to these services was the Traffic Simulator, which a human has to start.
+// That made the agent's awareness parasitic on a demo panel being open: turn
+// on a fault with the Traffic panel closed and the agent would never find out.
+//
+// This is the agent's own pulse. It touches each service it depends on, on its
+// own schedule, whether or not anyone is watching, and the server records the
+// true Layer 0 outcome of each beat — which is exactly the signal the
+// threshold math in infraHealthStore then acts on.
+const HEARTBEAT_TARGETS = ['/api/health', '/api/treasury/balances', '/api/traffic/probe?worker=agent-heartbeat'];
+const HEARTBEAT_TIMEOUT_MS = 3000;
+let heartbeatCursor = 0;
+
+/**
+ * Touches ONE tracked service per call, round-robin.
+ *
+ * One at a time rather than all three at once: this runs for the whole life of
+ * the session, and the browser's per-origin connection budget is already
+ * shared with the simulator's workers, this hook's own status polling, and the
+ * agent's reasoning and on-chain payment calls — which genuinely take 10-20s
+ * and hold a connection the whole time. A heartbeat that fans out competes
+ * with the very traffic it exists to measure.
+ */
+export async function beatOwnServices() {
+  const target = HEARTBEAT_TARGETS[heartbeatCursor % HEARTBEAT_TARGETS.length];
+  heartbeatCursor += 1;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HEARTBEAT_TIMEOUT_MS);
+  try {
+    // No x-traffic-lab header: this is the agent's own traffic, not the
+    // simulator's synthetic load, so it must not land in the simulator's hit
+    // log. The response body is irrelevant — the server has already recorded
+    // the true outcome, which is what /api/infra/status reads back.
+    await fetch(`${BASE}${target}`, { signal: controller.signal, headers: { 'x-agent-heartbeat': '1' } });
+  } catch {
+    // An aborted or refused beat is itself part of the signal, and the
+    // server-side record is the source of truth — nothing to do here.
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function callAgentReason(event, context, budget) {
   try {
     const res = await fetch(`${BASE}/api/agent/reason`, {
