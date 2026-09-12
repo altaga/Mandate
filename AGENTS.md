@@ -182,9 +182,10 @@ these as a regression, not an improvement):
 - Traffic panel counters are client-side: immune to D1 read-replica lag. The
   durable record is server-side at `/api/traffic/stats`.
 
-**The one real gap:** ERC-4337 is hand-rolled with `ethers.js`, not Circle's
-Agent Stack SDK. Circle products in active use are **Arc**, **USDC** and our
-**own deployed Paymaster** — see [README → Arc](README.md#arc).
+**Circle stack scope:** ERC-4337 primitives are implemented directly with
+`ethers.js` plus our own deployed Paymaster, rather than via Circle's Agent
+Stack SDK. Circle products in active use: **Arc**, **USDC**, **Paymaster** —
+see [README → Arc](README.md#arc).
 
 **Operational, not architectural:** the deployment is on EAS Hosting's free
 tier, so sustained load above ~3 simulator workers at HIGH intensity is

@@ -94,14 +94,13 @@ Right now it fails by returning `null`, which reads like *no match* rather than
 | [`app/src/services/arcService.js`](app/src/services/arcService.js) | Balances, explorer URLs, payment entry points |
 | [`app/src/app/api/treasury/balances+api.js`](app/src/app/api/treasury/balances+api.js) | Arc RPC as a real sponsor fallback (`directRpc`) |
 
-### The disclosure first
+### What we built at this layer
 
-We hand-rolled ERC-4337 directly against the EntryPoint with `ethers.js`
-instead of using Circle's Agent Stack / App Kits SDKs. That was a deliberate
-call — we wanted full visibility of the exact bytes being signed and submitted,
-which is auditable in a way an SDK call is not — but it does mean a judge
-looking specifically for Agent Stack usage will not find it. We would rather
-lead with that than have it discovered.
+We implemented the ERC-4337 primitives directly against the EntryPoint with
+`ethers.js`, and deployed our own Paymaster, rather than calling Circle's Agent
+Stack SDK. For an agent signing its own payments, auditability of the exact
+bytes going on-chain was worth more than the abstraction. Everything below is
+what that cost us.
 
 ### What was hard
 
