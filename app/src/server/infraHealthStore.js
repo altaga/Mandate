@@ -139,17 +139,8 @@ export async function markLayer0Recovered(path) {
 
 // ─── READ ─────────────────────────────────────────────────────────────────────
 
-/**
- * Compute derived health metrics for a single path.
- */
-export async function getServiceHealth(path) {
-  const [stateRows, windowRows] = await Promise.all([
-    queryD1('SELECT * FROM infra_health_state WHERE path = ?', [path]),
-    queryD1('SELECT ok, latency_ms FROM infra_health_window WHERE path = ? ORDER BY id DESC LIMIT ?', [path, WINDOW]),
-  ]);
-  const svc = stateRows?.[0] || DEFAULT_STATE;
-  const window = windowRows || [];
-
+/** Pure: turns a state row + window rows into the derived health object. */
+function computeHealth(path, svc, window) {
   const total = window.length;
   const errors = window.filter((h) => !h.ok).length;
   const avgLatencyMs = total ? Math.round(window.reduce((s, h) => s + h.latency_ms, 0) / total) : 0;
@@ -192,11 +183,57 @@ export async function getServiceHealth(path) {
 }
 
 /**
+ * Compute derived health metrics for a single path.
+ */
+export async function getServiceHealth(path) {
+  const [stateRows, windowRows] = await Promise.all([
+    queryD1('SELECT * FROM infra_health_state WHERE path = ?', [path]),
+    queryD1('SELECT ok, latency_ms FROM infra_health_window WHERE path = ? ORDER BY id DESC LIMIT ?', [path, WINDOW]),
+  ]);
+  return computeHealth(path, stateRows?.[0] || DEFAULT_STATE, windowRows || []);
+}
+
+/**
  * Returns health status for all tracked services.
+ *
+ * Was Promise.all(TRACKED_PATHS.map(getServiceHealth)) — 6 paths x 2 queries
+ * each fired 12 concurrent D1 REST calls per poll (this endpoint is hit
+ * every 3s by the client). Confirmed directly that this was silently
+ * dropping results for whichever path's queries lost that race: D1 itself
+ * had the correct row (consecutive_errors, last_status all matching health
+ * and balances exactly), but this endpoint kept reporting 'probe' stuck at
+ * the DEFAULT_STATE fallback (0 errors, mode layer0) — meaning that path's
+ * queryD1() calls were resolving to null (network error/timeout under the
+ * concurrent fan-out) far more often than the others, so it could accumulate
+ * real consecutive errors on Layer 0 forever without ever crossing the
+ * threshold this endpoint could see, and the agent never fails it over.
+ * Two batched queries (all state rows, all window rows via a window
+ * function for "last N per path") instead of twelve fixes the race by not
+ * creating it.
  */
 export async function getAllHealth() {
-  const results = await Promise.all(TRACKED_PATHS.map((path) => getServiceHealth(path)));
-  return results.filter(Boolean);
+  const placeholders = TRACKED_PATHS.map(() => '?').join(',');
+  const [stateRows, windowRows] = await Promise.all([
+    queryD1(`SELECT * FROM infra_health_state WHERE path IN (${placeholders})`, TRACKED_PATHS),
+    queryD1(
+      `SELECT path, ok, latency_ms FROM (
+         SELECT path, ok, latency_ms,
+                ROW_NUMBER() OVER (PARTITION BY path ORDER BY id DESC) AS rn
+         FROM infra_health_window WHERE path IN (${placeholders})
+       ) WHERE rn <= ?`,
+      [...TRACKED_PATHS, WINDOW]
+    ),
+  ]);
+
+  const stateByPath = new Map((stateRows || []).map((r) => [r.path, r]));
+  const windowByPath = new Map(TRACKED_PATHS.map((p) => [p, []]));
+  for (const row of windowRows || []) {
+    windowByPath.get(row.path)?.push(row);
+  }
+
+  return TRACKED_PATHS.map((path) =>
+    computeHealth(path, stateByPath.get(path) || DEFAULT_STATE, windowByPath.get(path) || [])
+  );
 }
 
 /**
