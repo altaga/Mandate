@@ -17,8 +17,13 @@ export function TrafficSimulatorPanel({ lab }) {
     startWorkers, stopWorkers, resetStats,
   } = lab;
 
+  // Hosting throttles (429 from the EAS free tier) are deliberately NOT
+  // failures — they say nothing about Layer 0's health, and folding them in
+  // made a plan limit look exactly like the injected fault's effect.
   const fail   = (stats.errors || 0) + (stats.timeouts || 0);
-  const health = stats.total ? Math.round((stats.ok / stats.total) * 100) : 100;
+  const throttled = stats.throttled || 0;
+  const served = Math.max(0, (stats.total || 0) - throttled);
+  const health = served ? Math.round((stats.ok / served) * 100) : 100;
   const healthColor = health > 80 ? '#34C759' : health > 50 ? '#FFD60A' : '#FF453A';
 
   return (
@@ -106,7 +111,10 @@ export function TrafficSimulatorPanel({ lab }) {
         <View style={styles.healthTrack}>
           <View style={[styles.healthFill, { width: `${health}%`, backgroundColor: healthColor }]} />
         </View>
-        <Text style={styles.healthSub}>avg {stats.avgLatencyMs || 0}ms latency · last {stats.lastPath || '—'}</Text>
+        <Text style={styles.healthSub}>
+          avg {stats.avgLatencyMs || 0}ms latency · last {stats.lastPath || '—'}
+          {throttled > 0 ? ` · ${throttled} throttled by hosting plan` : ''}
+        </Text>
       </View>
 
       {/* ── Reset ── */}
@@ -159,8 +167,8 @@ function Stat({ label, value, color }) {
 
 function TermLine({ ev }) {
   const ok = ev.ok;
-  const color = ev.timeout ? '#FFD60A' : ok ? '#34C759' : '#FF453A';
-  const prefix = ev.timeout ? '⏱' : ok ? '✓' : '✗';
+  const color = ev.throttled ? '#8E8E93' : ev.timeout ? '#FFD60A' : ok ? '#34C759' : '#FF453A';
+  const prefix = ev.throttled ? '⇥' : ev.timeout ? '⏱' : ok ? '✓' : '✗';
   return (
     <View style={styles.termLine}>
       <Text style={[styles.termPrefix, { color }]}>{prefix}</Text>

@@ -6,6 +6,7 @@ const EMPTY_STATS = {
   ok: 0,
   errors: 0,
   timeouts: 0,
+  throttled: 0,
   avgLatencyMs: 0,
   lastLatencyMs: 0,
   lastPath: '—',
@@ -47,12 +48,16 @@ export function useTrafficLab() {
   // actually needed here — it's a single-viewer panel) for "always reflects
   // what this tab's own requests actually did," which is immune to replica
   // lag by construction.
-  const accRef = useRef({ total: 0, ok: 0, errors: 0, timeouts: 0, latencySum: 0, byPath: {}, events: [], hitTimes: [] });
+  const accRef = useRef({ total: 0, ok: 0, errors: 0, timeouts: 0, throttled: 0, latencySum: 0, byPath: {}, events: [], hitTimes: [] });
 
   const recordLocalHit = useCallback((result, worker) => {
     const acc = accRef.current;
     acc.total += 1;
-    if (result.timeout) acc.timeouts += 1;
+    // A throttled hit is the hosting plan's rate limit, not the service
+    // failing — kept out of the failure count so a hosting ceiling can't
+    // read as the injected fault's work.
+    if (result.throttled) acc.throttled += 1;
+    else if (result.timeout) acc.timeouts += 1;
     else if (result.ok) acc.ok += 1;
     else acc.errors += 1;
     acc.latencySum += Number(result.latencyMs) || 0;
@@ -63,15 +68,20 @@ export function useTrafficLab() {
     acc.hitTimes = acc.hitTimes.filter((t) => now - t <= RPS_WINDOW_MS);
 
     acc.events = [
-      { id: `${now}-${Math.random().toString(36).slice(2, 8)}`, worker, path: result.target, status: result.status, latencyMs: result.latencyMs, ok: result.ok, timeout: result.timeout },
+      { id: `${now}-${Math.random().toString(36).slice(2, 8)}`, worker, path: result.target, status: result.status, latencyMs: result.latencyMs, ok: result.ok, timeout: result.timeout, throttled: result.throttled },
       ...acc.events,
     ].slice(0, RECENT_EVENTS);
+
+    if (result.throttled) {
+      setError('Hosting rate limit reached (EAS free tier) — lower the worker count or intensity. Not a Layer 0 fault.');
+    }
 
     setStats({
       total: acc.total,
       ok: acc.ok,
       errors: acc.errors,
       timeouts: acc.timeouts,
+      throttled: acc.throttled,
       avgLatencyMs: acc.total ? Math.round(acc.latencySum / acc.total) : 0,
       lastLatencyMs: result.latencyMs,
       lastPath: result.target,
@@ -162,8 +172,9 @@ export function useTrafficLab() {
   }, []);
 
   const resetStats = useCallback(() => {
-    accRef.current = { total: 0, ok: 0, errors: 0, timeouts: 0, latencySum: 0, byPath: {}, events: [], hitTimes: [] };
+    accRef.current = { total: 0, ok: 0, errors: 0, timeouts: 0, throttled: 0, latencySum: 0, byPath: {}, events: [], hitTimes: [] };
     setStats(EMPTY_STATS);
+    setError('');
     // Best-effort: also clear the shared D1 counters so other viewers /
     // Internal Services' byPath cards aren't left showing this session's
     // stale totals. Not awaited for the display — that's already reset

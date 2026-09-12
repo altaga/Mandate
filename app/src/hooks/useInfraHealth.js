@@ -28,11 +28,8 @@ const POLL_INTERVAL = 3000;
 // starts with nothing else running, and faster when the simulator is adding
 // load on top.
 const HEARTBEAT_INTERVAL = 1500;
-// A service hit more recently than this is already being watched by someone
-// else's traffic — the agent reads that instead of adding its own.
-const HEARTBEAT_STALE_AFTER = 5000;
 
-export function useInfraHealth({ budget, budgetKnown, onSpend, onFailoverEvent, onRecoveryEvent } = {}) {
+export function useInfraHealth({ budget, budgetKnown, trafficRunning, onSpend, onFailoverEvent, onRecoveryEvent } = {}) {
   const [services, setServices] = useState([]);
   const [overallStatus, setOverallStatus] = useState('healthy');
   const [activeFailovers, setActiveFailovers] = useState(0);
@@ -43,13 +40,14 @@ export function useInfraHealth({ budget, budgetKnown, onSpend, onFailoverEvent, 
   const onRecoveryRef = useRef(onRecoveryEvent);
   const budgetRef = useRef(budget);
   const budgetKnownRef = useRef(budgetKnown);
-  const servicesRef = useRef([]);
+  const trafficRunningRef = useRef(trafficRunning);
   const onSpendRef = useRef(onSpend);
 
   useEffect(() => { onFailoverRef.current = onFailoverEvent; }, [onFailoverEvent]);
   useEffect(() => { onRecoveryRef.current = onRecoveryEvent; }, [onRecoveryEvent]);
   useEffect(() => { budgetRef.current = budget; }, [budget]);
   useEffect(() => { budgetKnownRef.current = budgetKnown; }, [budgetKnown]);
+  useEffect(() => { trafficRunningRef.current = trafficRunning; }, [trafficRunning]);
   useEffect(() => { onSpendRef.current = onSpend; }, [onSpend]);
 
   const poll = useCallback(async () => {
@@ -57,7 +55,6 @@ export function useInfraHealth({ budget, budgetKnown, onSpend, onFailoverEvent, 
     if (!data || !data.services) return;
 
     setServices(data.services);
-    servicesRef.current = data.services;
     setOverallStatus(data.overallStatus || 'healthy');
     setActiveFailovers(data.summary?.activeFailovers || 0);
     setTotalSponsorCost(data.summary?.totalSponsorCost || 0);
@@ -115,19 +112,22 @@ export function useInfraHealth({ budget, budgetKnown, onSpend, onFailoverEvent, 
     let alive = true;
     let timer = null;
 
-    // Only beat a service nothing else has touched lately. With the Traffic
-    // Simulator running, every path is being exercised constantly and the
-    // agent can just read that — beating on top of it only added load, and
-    // enough of it to start drawing edge 429s into the demo's own log.
-    const isStale = (path) => {
-      const svc = servicesRef.current.find((s) => s.path === path);
-      if (!svc) return true;
-      return !svc.lastHitAt || Date.now() - svc.lastHitAt > HEARTBEAT_STALE_AFTER;
-    };
+    // Stay quiet while the Traffic Simulator is running: it already exercises
+    // every path constantly, so beating on top of it adds load for no signal
+    // — enough of it, with the workers, to push past the edge's rate limit
+    // and draw real 429s into the demo's own traffic log.
+    //
+    // Gated on the simulator's actual running state rather than on how long
+    // ago each service was last hit. The obvious version of that check reads
+    // lastHitAt out of the health payload, which comes from D1 — and D1's
+    // read replicas lag exactly when write load is heaviest, so the freshness
+    // signal goes stale precisely when traffic is heaviest, and the heartbeat
+    // wakes up and piles on at the worst possible moment.
+    const shouldBeat = () => !trafficRunningRef.current;
 
     const beat = async () => {
       if (!alive) return;
-      await beatOwnServices(isStale);
+      await beatOwnServices(shouldBeat);
       if (alive) timer = setTimeout(beat, HEARTBEAT_INTERVAL);
     };
 

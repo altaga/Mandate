@@ -32,7 +32,15 @@ export const TrafficLabService = {
         status: response.status,
         latencyMs: data.latencyMs ?? (Date.now() - started),
         target,
-        timeout: false
+        timeout: false,
+        // 429 here is not Layer 0 failing — it's EAS Hosting's own
+        // free-tier request-rate limit throttling the deployment ("This
+        // deployment is receiving too many requests... upgrade to a paid
+        // plan to lift this limit", served as HTML by the edge before our
+        // code runs). Counting it as a service failure made a hosting
+        // ceiling look exactly like the injected fault's effect, which is
+        // the one thing this panel must never blur.
+        throttled: response.status === 429
       };
     } catch (error) {
       const timeout = error?.name === 'AbortError';

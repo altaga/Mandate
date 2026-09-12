@@ -95,6 +95,7 @@ export default function DemoChatScreen() {
   const infraHealth = useInfraHealth({
     budget,
     budgetKnown,
+    trafficRunning: lab.running,
     onSpend: spend,
     onFailoverEvent: handleFailoverEvent,
     onRecoveryEvent: handleRecoveryEvent,
