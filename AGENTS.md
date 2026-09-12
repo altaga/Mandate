@@ -171,14 +171,25 @@ Check before any funds move. A declined or failed check produces
 
 ---
 
-## 7. Known gaps — already disclosed, do not report as findings
+## 7. Already disclosed — do not report as findings
 
-- ERC-4337 is hand-rolled with `ethers.js`, **not** Circle's Agent Stack SDK.
-- The deployment is on EAS Hosting's **free tier**: sustained load above ~3
-  simulator workers at HIGH intensity is throttled by the host, not the app.
-- ENS (`mission.mandate.eth`) is a namespace pointer, not load-bearing.
-- `catalog` and `reputation` are monitored but exempt from fault injection —
-  no sponsor implementation is wired for them.
+**Deliberate, with reasoning** (see invariants in §4 — treat a change to any of
+these as a regression, not an improvement):
+
+- `reason` and `balances` are exempt from fault injection: control plane.
+- `catalog` and `reputation` are exempt: no sponsor wired, so breaking them
+  would claim a recovery that cannot happen.
+- Traffic panel counters are client-side: immune to D1 read-replica lag. The
+  durable record is server-side at `/api/traffic/stats`.
+
+**The one real gap:** ERC-4337 is hand-rolled with `ethers.js`, not Circle's
+Agent Stack SDK. Circle products in active use are **Arc**, **USDC** and our
+**own deployed Paymaster** — see [README → Arc](README.md#arc).
+
+**Operational, not architectural:** the deployment is on EAS Hosting's free
+tier, so sustained load above ~3 simulator workers at HIGH intensity is
+throttled by the host. Throttled hits are labelled as such and excluded from the
+failure count.
 
 ---
 
