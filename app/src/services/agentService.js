@@ -197,6 +197,7 @@ export const AgentService = {
           // Testnet — an unmissable, tappable confirmation matters here.
           toast.success(`${vendor.cost} USDC → ${vendor.name}`, {
             description: `Tx: ${receipt.txHash.slice(0, 10)}…${receipt.txHash.slice(-8)}`,
+            duration: 8000,
             action: {
               label: 'View on Arcscan ↗',
               onClick: () => Linking.openURL(ArcService.getExplorerTxUrl(receipt.txHash)),

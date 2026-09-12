@@ -52,6 +52,7 @@ export function TreasuryTab({
     if (result.txHash) {
       toast.success(`${formatUsd(result.amount)} USDC granted on-chain`, {
         description: `Tx: ${result.txHash.slice(0, 10)}…${result.txHash.slice(-8)}`,
+        duration: 8000,
         action: {
           label: 'View on Arcscan ↗',
           onClick: () => Linking.openURL(ArcService.getExplorerTxUrl(result.txHash)),
