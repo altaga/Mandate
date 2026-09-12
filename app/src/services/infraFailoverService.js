@@ -49,12 +49,14 @@ export async function pollInfraHealth() {
 // own schedule, whether or not anyone is watching, and the server records the
 // true Layer 0 outcome of each beat — which is exactly the signal the
 // threshold math in infraHealthStore then acts on.
+const HEARTBEAT_PATHS = ['health', 'balances', 'probe'];
 const HEARTBEAT_TARGETS = ['/api/health', '/api/treasury/balances', '/api/traffic/probe?worker=agent-heartbeat'];
 const HEARTBEAT_TIMEOUT_MS = 3000;
 let heartbeatCursor = 0;
 
 /**
- * Touches ONE tracked service per call, round-robin.
+ * Touches ONE tracked service per call, round-robin, and only if `shouldBeat`
+ * says that service isn't already being exercised by something else.
  *
  * One at a time rather than all three at once: this runs for the whole life of
  * the session, and the browser's per-origin connection budget is already
@@ -62,10 +64,19 @@ let heartbeatCursor = 0;
  * agent's reasoning and on-chain payment calls — which genuinely take 10-20s
  * and hold a connection the whole time. A heartbeat that fans out competes
  * with the very traffic it exists to measure.
+ *
+ * The `shouldBeat` gate is what keeps it from doing harm: beating
+ * unconditionally on top of a running Traffic Simulator pushed the total
+ * request rate past the edge's limit and started drawing real 429s into the
+ * demo's own traffic log. The heartbeat exists to guarantee the agent has a
+ * signal when nothing else is generating one — when the simulator is already
+ * hammering a path, the honest thing is to stay quiet and read that.
  */
-export async function beatOwnServices() {
-  const target = HEARTBEAT_TARGETS[heartbeatCursor % HEARTBEAT_TARGETS.length];
+export async function beatOwnServices(shouldBeat = () => true) {
+  const index = heartbeatCursor % HEARTBEAT_TARGETS.length;
+  const target = HEARTBEAT_TARGETS[index];
   heartbeatCursor += 1;
+  if (!shouldBeat(HEARTBEAT_PATHS[index])) return;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), HEARTBEAT_TIMEOUT_MS);

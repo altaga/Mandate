@@ -28,6 +28,9 @@ const POLL_INTERVAL = 3000;
 // starts with nothing else running, and faster when the simulator is adding
 // load on top.
 const HEARTBEAT_INTERVAL = 1500;
+// A service hit more recently than this is already being watched by someone
+// else's traffic — the agent reads that instead of adding its own.
+const HEARTBEAT_STALE_AFTER = 5000;
 
 export function useInfraHealth({ budget, budgetKnown, onSpend, onFailoverEvent, onRecoveryEvent } = {}) {
   const [services, setServices] = useState([]);
@@ -40,6 +43,7 @@ export function useInfraHealth({ budget, budgetKnown, onSpend, onFailoverEvent, 
   const onRecoveryRef = useRef(onRecoveryEvent);
   const budgetRef = useRef(budget);
   const budgetKnownRef = useRef(budgetKnown);
+  const servicesRef = useRef([]);
   const onSpendRef = useRef(onSpend);
 
   useEffect(() => { onFailoverRef.current = onFailoverEvent; }, [onFailoverEvent]);
@@ -53,6 +57,7 @@ export function useInfraHealth({ budget, budgetKnown, onSpend, onFailoverEvent, 
     if (!data || !data.services) return;
 
     setServices(data.services);
+    servicesRef.current = data.services;
     setOverallStatus(data.overallStatus || 'healthy');
     setActiveFailovers(data.summary?.activeFailovers || 0);
     setTotalSponsorCost(data.summary?.totalSponsorCost || 0);
@@ -110,9 +115,19 @@ export function useInfraHealth({ budget, budgetKnown, onSpend, onFailoverEvent, 
     let alive = true;
     let timer = null;
 
+    // Only beat a service nothing else has touched lately. With the Traffic
+    // Simulator running, every path is being exercised constantly and the
+    // agent can just read that — beating on top of it only added load, and
+    // enough of it to start drawing edge 429s into the demo's own log.
+    const isStale = (path) => {
+      const svc = servicesRef.current.find((s) => s.path === path);
+      if (!svc) return true;
+      return !svc.lastHitAt || Date.now() - svc.lastHitAt > HEARTBEAT_STALE_AFTER;
+    };
+
     const beat = async () => {
       if (!alive) return;
-      await beatOwnServices();
+      await beatOwnServices(isStale);
       if (alive) timer = setTimeout(beat, HEARTBEAT_INTERVAL);
     };
 
