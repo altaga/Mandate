@@ -64,7 +64,12 @@ decorative.
 
 ## What you are looking at
 
-Mission Control, live at `mandate.expo.app`. Left panel generates real load,
+The landing page at `mandate.expo.app` — onboarding on the left, and the same
+four-step chaos walkthrough this README expands on.
+
+![Landing](app/assets/screenshots/01-landing.png)
+
+Mission Control. Left panel generates real load,
 right panel injects real faults, the middle is the agent thinking out loud.
 
 ![Mission Control](app/assets/screenshots/02-mission-control.png)
@@ -104,6 +109,11 @@ Open **https://mandate.expo.app** and:
 Want the escalation path instead? Ask the agent in chat to hire a vendor that
 costs more than its budget (`ResilientDB`, $1.20) — it will halt and demand a
 World ID Selfie Check before a single cent moves.
+
+The landing page carries its own four-step walkthrough that starts one step
+earlier — onboarding with World ID and granting the agent its first dollar. Both
+paths work; the agent already holds a funded budget, so the steps above skip
+straight to breaking things.
 
 <a id="how-it-works"></a>
 
@@ -264,6 +274,12 @@ curl -X POST https://api.studio.thegraph.com/query/1758530/mandate-vendor-reputa
 - **Arc as a sponsor.** When `balances` or `probe` degrade, the fallback is a
   direct Arc RPC call bypassing the failing proxy layer. Cost $0 — and the
   agent's reasoning says so out loud: a good failover is not always a purchase.
+
+Live treasury — these are on-chain wallet balances read through Arc RPC, shown
+at six decimals because sub-cent sponsor payments have to survive display
+without rounding to `$0.00`:
+
+![Live treasury](app/assets/screenshots/03-treasury.png)
 
 Every `Tx: 0x…` in Agent Chat resolves on [Arcscan](https://testnet.arcscan.app)
 — real value, real block, real timestamp.
