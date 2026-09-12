@@ -43,9 +43,19 @@ export const TrafficLabService = {
     }
   },
 
+  // A deploy cutover / cold start can briefly return an HTML edge error page
+  // instead of JSON — response.json() then throws a raw
+  // "Unexpected token '<'..." SyntaxError, which used to surface verbatim in
+  // the panel's error banner. Parse defensively and raise a readable message
+  // instead, the same way probe() above already handles it.
   async fetchStats() {
     const response = await fetch('/api/traffic/stats');
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('Traffic stats temporarily unavailable');
+    }
     if (!response.ok) throw new Error(data.error || 'Failed to read traffic stats');
     return data;
   },
@@ -56,7 +66,12 @@ export const TrafficLabService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode, latencyMs })
     });
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('Server temporarily unavailable — try again');
+    }
     if (!response.ok) throw new Error(data.error || 'Failed to set glitch');
     return data;
   },
@@ -67,7 +82,11 @@ export const TrafficLabService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reset: true })
     });
-    return response.json();
+    try {
+      return await response.json();
+    } catch {
+      throw new Error('Server temporarily unavailable — try again');
+    }
   },
 
   nextTarget(index) {

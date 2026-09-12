@@ -55,7 +55,14 @@ export function useTrafficLab() {
       }
       setError('');
     } catch (err) {
-      setError(err.message);
+      // This runs unattended every 900ms — a single transient blip (deploy
+      // cutover, cold start) shouldn't freeze the panel behind a scary error
+      // banner when the very next poll will most likely succeed. Confirmed
+      // directly: a raw "Unexpected token..." parse error was showing up in
+      // the UI for one poll cycle and then silently resolving on its own.
+      // Keep the last good stats and just log it; setError stays reserved
+      // for explicit user actions (start/stop/glitch) where feedback matters.
+      console.warn('[useTrafficLab] stats poll failed:', err.message);
     }
   }, []);
 
