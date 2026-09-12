@@ -30,10 +30,16 @@ export async function setGlitch({ mode, latencyMs } = {}) {
     ? Math.min(5000, Number(latencyMs))
     : current.latencyMs;
 
+  // updated_at is what the janitor Worker reads to tell "someone is running
+  // the demo right now" from "someone left a fault on and walked away". Without
+  // it, injecting a fault without also starting the Traffic Simulator would
+  // look like no activity at all, and the idle reset could fire under a judge
+  // who is mid-evaluation.
   await queryD1(
-    `INSERT INTO traffic_glitch (id, mode, latency_ms) VALUES (?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET mode = excluded.mode, latency_ms = excluded.latency_ms`,
-    [GLITCH_ROW_ID, nextMode, nextLatency]
+    `INSERT INTO traffic_glitch (id, mode, latency_ms, updated_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET mode = excluded.mode, latency_ms = excluded.latency_ms,
+       updated_at = excluded.updated_at`,
+    [GLITCH_ROW_ID, nextMode, nextLatency, Date.now()]
   );
   return { mode: nextMode, latencyMs: nextLatency };
 }

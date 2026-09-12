@@ -410,9 +410,15 @@ requires believing the UI.
 | Counters are live, not hardcoded | `curl https://mandate.expo.app/api/traffic/stats`, run traffic, curl again — the totals move |
 | Payments are real | Every `Tx: 0x…` opens on Arcscan; the same payment appears in our own subgraph |
 
-Remember to clear the fault when you are done: `curl -X POST
+Clear the fault when you are done — `curl -X POST
 https://mandate.expo.app/api/traffic/glitch -H "Content-Type: application/json"
--d '{"mode":"off"}'`
+-d '{"mode":"off"}'` — though you do not have to: a Cloudflare Worker on a cron
+trigger (`app/janitor-worker/`) returns the demo to a pristine state once it has
+been idle for 20 minutes, so nobody ever lands on someone else's leftover fault.
+It only counts *human* activity — injecting a fault, or running the simulator —
+so it will not reset out from under you mid-evaluation, and it deliberately
+ignores the agent's own heartbeat, which would otherwise keep a forgotten
+browser tab looking busy forever.
 
 ---
 
@@ -518,7 +524,7 @@ CORS-gated with per-IP rate limiting on the money-moving endpoints.
 
 ```
 app/          The application — Expo Router frontend + server API routes,
-              Paymaster and x402 vendor Workers, screenshots
+              Paymaster, x402 vendor and janitor Workers, screenshots
 subgraph/     Our deployed subgraph: schema, hand-rolled ABI decoder, tests
 AGENTS.md     Machine-readable brief for AI agents reviewing this repo
 FEEDBACK.md   Integration feedback + engineering log, with code pointers
