@@ -99,6 +99,8 @@ without trusting the app's own UI.
   real-time counters the UI renders — run traffic, curl again, watch the
   totals actually move.
 
-## Architecture
+## Architecture and full documentation
+
+Complete technical documentation — problem statement, the failover loop end to end, how each sponsor integration is load-bearing, and a requirement-by-requirement mapping for all three tracks: [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md).
 
 Full diagrams: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

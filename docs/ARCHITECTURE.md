@@ -13,35 +13,35 @@
 ```mermaid
 flowchart TD
     subgraph HumanOperator ["Human Operator"]
-        MandateDef["1. Define Mandate Policy\n- Budget: $1.00 USDC\n- SLA: Latency < 500ms\n- Trust: Rep >= 95%"]
-        EscalationApproval["5b. World ID Step-Up\n(Selfie / Device Proof)\nAmends Budget: +$1.00"]
+        MandateDef["1. Define Mandate Policy<br/>- Budget: $1.00 USDC<br/>- SLA: Latency < 500ms<br/>- Trust: Rep >= 95%"]
+        EscalationApproval["5b. World ID Step-Up<br/>(Selfie / Device Proof)<br/>Amends Budget: +$1.00"]
     end
 
     subgraph AutonomousAgent ["Autonomous Mandate Engine"]
         AgentLoop["AI Decision Loop (MiniMax-M3 / Deterministic Core)"]
-        SLAPolicy["Policy Enforcer\n- Budget Constraints\n- Whitelist Verification\n- Prompt Injection Firewall"]
+        SLAPolicy["Policy Enforcer<br/>- Budget Constraints<br/>- Whitelist Verification<br/>- Prompt Injection Firewall"]
     end
 
     subgraph TheGraphRail ["The Graph Network Gateway"]
-        LiveQuery["Live GraphQL Query\n(_meta block + USDC token telemetry)"]
-        RiskCalc["Real Risk Calc: Indexer Lag\n(block.timestamp vs now)"]
+        LiveQuery["Live GraphQL Query<br/>(_meta block + USDC token telemetry)"]
+        RiskCalc["Real Risk Calc: Indexer Lag<br/>(block.timestamp vs now)"]
     end
 
     subgraph D1Rail ["Cloudflare D1 Reputation Ledger"]
-        Outcomes["outcomes table\n(vendor_id, success, latency_ms)"]
-        LiveRep["Live reputation query\n(>=3 real samples -> live_d1,\nelse static catalog fallback)"]
+        Outcomes["outcomes table<br/>(vendor_id, success, latency_ms)"]
+        LiveRep["Live reputation query<br/>(>=3 real samples -> live_d1,<br/>else static catalog fallback)"]
     end
 
     subgraph ArcSettlement ["Arc Network L1 (Chain ID: 5042002)"]
-        EntryPoint["ERC-4337 EntryPoint\n(0x5FF137D4...)"]
-        Paymaster["Arc Gasless Paymaster\n(0xf9aC568e...)"]
+        EntryPoint["ERC-4337 EntryPoint<br/>(0x5FF137D4...)"]
+        Paymaster["Arc Gasless Paymaster<br/>(0xf9aC568e...)"]
         UsdcRail["Arc USDC Contract & Escrow"]
-        RefundRail["Onchain SLA Refund\n(Payment Rejection Recourse)"]
+        RefundRail["Onchain SLA Refund<br/>(Payment Rejection Recourse)"]
     end
 
     subgraph WorldIDRail ["World ID Protocol"]
-        IDKit["World IDKit v4 Widget\n(Action: mandate-operator-auth)"]
-        RPVerify["World API /v4/verify\n(RP: rp_b741b56a...)"]
+        IDKit["World IDKit v4 Widget<br/>(Action: mandate-operator-auth)"]
+        RPVerify["World API /v4/verify<br/>(RP: rp_b741b56a...)"]
         AntiReplay["Nullifier Anti-Replay Store"]
     end
 
@@ -49,18 +49,18 @@ flowchart TD
     HumanOperator -->|Deploys Policy| AgentLoop
     AgentLoop -->|2a. Query live vendor reputation| LiveRep
     LiveRep -->|Reads real logged outcomes| Outcomes
-    LiveRep -->|Reputation + source (live_d1/static)| AgentLoop
+    LiveRep -->|"Reputation + source (live_d1/static)"| AgentLoop
     AgentLoop -->|2b. Query real indexer risk before paying| LiveQuery
     LiveQuery -->|Real block + USDC telemetry| RiskCalc
     RiskCalc -->|riskTier: derived from real indexer lag| AgentLoop
-    AgentLoop -->|3. Selected Provider (HALTS if risk requires human review)| SLAPolicy
+    AgentLoop -->|"3. Selected Provider (HALTS if risk requires human review)"| SLAPolicy
     SLAPolicy -->|4a. Build UserOp| EntryPoint
     EntryPoint -->|Gas Sponsored| Paymaster
     Paymaster -->|Execute Real USDC Payment| UsdcRail
     UsdcRail -->|Real x402 vendor call| Outcomes
 
     %% SLA Breach Flow
-    UsdcRail -.->|Real SLA Breach (measured latency)| AgentLoop
+    UsdcRail -.->|"Real SLA Breach (measured latency)"| AgentLoop
     AgentLoop -->|SLA Recourse: Reject Payment| RefundRail
 
     %% Prompt Injection Flow
@@ -68,7 +68,7 @@ flowchart TD
     SLAPolicy -->|Block Transfer, Reject Instruction| AgentLoop
 
     %% Human Escalation Flow
-    AgentLoop -->|5a. Authority Exceeded ($1.20 > $0.71)| IDKit
+    AgentLoop -->|"5a. Authority Exceeded ($1.20 > $0.71)"| IDKit
     IDKit -->|ZKP Verification| RPVerify
     RPVerify -->|Record Nullifier| AntiReplay
     AntiReplay -->|Human Verified| EscalationApproval
@@ -81,7 +81,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    Judge["Judge, browser"] -->|Live webcam capture| Bio["Face Embedding Engine\n(/api/extract)"]
+    Judge["Judge, browser"] -->|Live webcam capture| Bio["Face Embedding Engine<br/>(/api/extract)"]
     Judge -->|Real Selfie Check| IDKit["World IDKit v4 Widget"]
     IDKit -->|Real ZKP verify| Verify["/api/verify"]
     Bio -->|128-d vector| Save["/api/db/users"]
@@ -97,8 +97,8 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    Agent["Mandate Agent"] -->|Real x402 call| Worker["Deployed x402 Vendor Worker\n(one of 8, mandate-x402-*.workers.dev)"]
-    Worker -->|Real workload| RealWork["Real work: MiniMax inference /\nThe Graph query / Arc RPC / CPU burst"]
+    Agent["Mandate Agent"] -->|Real x402 call| Worker["Deployed x402 Vendor Worker<br/>(one of 8, mandate-x402-*.workers.dev)"]
+    Worker -->|Real workload| RealWork["Real work: MiniMax inference /<br/>The Graph query / Arc RPC / CPU burst"]
     Worker -->|Real outcome, best-effort| D1Rep["Cloudflare D1: mandate-reputation"]
     D1Rep -->|>=3 real samples| RepApi["/api/vendor/reputation"]
     RepApi -->|live_d1 or static_catalog| Agent
@@ -115,9 +115,9 @@ anything our own backend controls:
 
 ```mermaid
 flowchart LR
-    Pay["Agent pays a vendor\n(real ERC-4337 UserOp)"] -->|Real tx| EP["EntryPoint.handleOps(...)\non Arc Testnet"]
-    EP -->|Real UserOperationEvent| Indexer["mandate-vendor-reputation subgraph\n(Subgraph Studio)"]
-    Indexer -->|Manual ABI decode of the nested\nSimpleAccount.execute(dest,value,func) call| Decode["Real vendor + amount\n(not trusted from our backend)"]
+    Pay["Agent pays a vendor<br/>(real ERC-4337 UserOp)"] -->|Real tx| EP["EntryPoint.handleOps(...)<br/>on Arc Testnet"]
+    EP -->|Real UserOperationEvent| Indexer["mandate-vendor-reputation subgraph<br/>(Subgraph Studio)"]
+    Indexer -->|"Manual ABI decode of the nested<br/>SimpleAccount.execute(dest,value,func) call"| Decode["Real vendor + amount<br/>(not trusted from our backend)"]
     Decode -->|Aggregate per vendor| VendorRep["VendorReputation entity"]
     VendorRep -->|>=3 real on-chain samples| RepApi["/api/vendor/reputation"]
     RepApi -->|live_subgraph, highest priority| Agent2["Mandate Agent decision"]

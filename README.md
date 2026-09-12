@@ -84,7 +84,7 @@ The operator authorizes a **$1.00 USDC** budget and 3-minute mission window, the
 * **Identity**: **ENS** (Hierarchical agent namespace pointer `mission.mandate.eth`).
 * **Client & Engine**: Expo Server Runtime (`output: server`), React Native Web, TypeScript, Ethers v6.
 
-Full architecture diagrams (Mission Control loop, judge onboarding, vendor marketplace) are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Our World ID developer-experience feedback is in [`docs/WORLD_ID_FEEDBACK.md`](docs/WORLD_ID_FEEDBACK.md). Security model and env var reference: [`SECURITY.md`](SECURITY.md).
+Complete technical documentation — the problem, the failover loop, and why each sponsor integration is load-bearing rather than decorative, with per-track rubric mapping — is in [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md). Full architecture diagrams (Mission Control loop, judge onboarding, vendor marketplace) are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Our World ID developer-experience feedback is in [`docs/WORLD_ID_FEEDBACK.md`](docs/WORLD_ID_FEEDBACK.md). Security model and env var reference: [`SECURITY.md`](SECURITY.md).
 
 ---
 
