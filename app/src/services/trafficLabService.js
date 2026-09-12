@@ -49,7 +49,20 @@ export const TrafficLabService = {
   // the panel's error banner. Parse defensively and raise a readable message
   // instead, the same way probe() above already handles it.
   async fetchStats() {
-    const response = await fetch('/api/traffic/stats');
+    // No timeout here used to mean a slow/stuck D1 round-trip on the server
+    // could leave this fetch hanging well past the next 900ms poll tick —
+    // confirmed directly: the panel froze on stale numbers for 20+ seconds
+    // during the busiest recovery window, with no error shown at all
+    // (nothing ever rejected to hit the catch below). A hard timeout means a
+    // slow poll gets abandoned and the next tick gets a clean shot instead.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    let response;
+    try {
+      response = await fetch('/api/traffic/stats', { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
     let data;
     try {
       data = await response.json();

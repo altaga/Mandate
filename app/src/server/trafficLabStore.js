@@ -58,20 +58,38 @@ export async function recordHit({ path, status, latencyMs, ok, timeout, worker }
   }
 }
 
+// Polled every 900ms by the client — was firing 5 concurrent D1 REST calls
+// per invocation (getGlitch, an aggregate query, an RPS-window query, a
+// per-path GROUP BY, and the recent-events query). Under real load (workers
+// firing, plus the agent's own reasoning/payment/status traffic all hitting
+// D1 concurrently too) this was confirmed directly to make the traffic
+// panel's numbers freeze solid for 20+ seconds at a time — precisely during
+// the busiest window, when the fault was live and the agent was failing 3
+// paths over. Same root cause as the /api/infra/status fix: too many
+// concurrent D1 REST calls, not a broken query. Collapsing the three
+// traffic_hits queries into one conditional-aggregation query (the RPS
+// window and the 3 known lab targets — health/probe/balances, matching
+// TrafficLabService.TARGETS — as CASE-summed columns) cuts this from 5
+// round trips to 3.
 export async function getStats() {
-  const glitch = await getGlitch();
   const now = Date.now();
 
-  const [aggRows, rpsRows, pathRows, eventRows] = await Promise.all([
-    queryD1(`SELECT
+  const [glitch, aggRows, eventRows] = await Promise.all([
+    getGlitch(),
+    queryD1(
+      `SELECT
         COUNT(*) AS total,
         COALESCE(SUM(CASE WHEN is_timeout = 1 THEN 1 ELSE 0 END), 0) AS timeouts,
         COALESCE(SUM(CASE WHEN is_timeout = 0 AND ok = 1 THEN 1 ELSE 0 END), 0) AS ok,
         COALESCE(SUM(CASE WHEN is_timeout = 0 AND ok = 0 THEN 1 ELSE 0 END), 0) AS errors,
-        COALESCE(AVG(latency_ms), 0) AS avg_latency_ms
-      FROM traffic_hits`),
-    queryD1('SELECT COUNT(*) AS n FROM traffic_hits WHERE created_at > ?', [now - RPS_WINDOW_MS]),
-    queryD1('SELECT path, COUNT(*) AS n FROM traffic_hits GROUP BY path'),
+        COALESCE(AVG(latency_ms), 0) AS avg_latency_ms,
+        COALESCE(SUM(CASE WHEN created_at > ? THEN 1 ELSE 0 END), 0) AS recent_count,
+        COALESCE(SUM(CASE WHEN path = 'health' THEN 1 ELSE 0 END), 0) AS path_health,
+        COALESCE(SUM(CASE WHEN path = 'probe' THEN 1 ELSE 0 END), 0) AS path_probe,
+        COALESCE(SUM(CASE WHEN path = 'balances' THEN 1 ELSE 0 END), 0) AS path_balances
+      FROM traffic_hits`,
+      [now - RPS_WINDOW_MS]
+    ),
     queryD1(
       `SELECT id, created_at, path, status, latency_ms, ok, is_timeout, worker
        FROM traffic_hits ORDER BY id DESC LIMIT ?`,
@@ -79,10 +97,13 @@ export async function getStats() {
     ),
   ]);
 
-  const agg = aggRows?.[0] || { total: 0, ok: 0, errors: 0, timeouts: 0, avg_latency_ms: 0 };
+  const agg = aggRows?.[0] || { total: 0, ok: 0, errors: 0, timeouts: 0, avg_latency_ms: 0, recent_count: 0, path_health: 0, path_probe: 0, path_balances: 0 };
   const last = eventRows?.[0] || null;
-  const byPath = {};
-  for (const row of pathRows || []) byPath[row.path] = row.n;
+  const byPath = {
+    health: Number(agg.path_health) || 0,
+    probe: Number(agg.path_probe) || 0,
+    balances: Number(agg.path_balances) || 0,
+  };
 
   return {
     glitch,
@@ -95,7 +116,7 @@ export async function getStats() {
     lastPath: last ? last.path : '—',
     lastStatus: last ? last.status : 0,
     lastAt: last ? last.created_at : 0,
-    rps: Number((((rpsRows?.[0]?.n) || 0) / (RPS_WINDOW_MS / 1000)).toFixed(2)),
+    rps: Number(((Number(agg.recent_count) || 0) / (RPS_WINDOW_MS / 1000)).toFixed(2)),
     byPath,
     events: (eventRows || []).map((row) => ({
       id: `${row.created_at}-${row.id}`,
