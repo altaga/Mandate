@@ -118,7 +118,16 @@ export function TreasuryTab({
               <Text style={styles.presetText}>{formatUsd(preset)}</Text>
             </Pressable>
           ))}
-          <Pressable style={styles.presetBtn} onPress={() => setAmount(unallocated.toFixed(2))}>
+          <Pressable
+            style={styles.presetBtn}
+            // toFixed(2) rounds — for an unallocated balance like 0.9695 that
+            // rounds UP to "0.97", which is then rejected by the treasury
+            // guard as exceeding the real (unrounded) balance. Floor to 2
+            // decimals so MAX always requests an amount the treasury
+            // actually has, confirmed directly (0.969493 → "0.97" → grant
+            // silently failed with "Only $0.97 USDC remains...").
+            onPress={() => setAmount((Math.floor(unallocated * 100) / 100).toFixed(2))}
+          >
             <Text style={styles.presetText}>MAX</Text>
           </Pressable>
         </View>
