@@ -102,6 +102,43 @@ Stack SDK. For an agent signing its own payments, auditability of the exact
 bytes going on-chain was worth more than the abstraction. Everything below is
 what that cost us.
 
+### We tried Agent Stack's Nanopayments, and hit an EOA-only wall
+
+Since our sponsor activations are $0.00004 per-call machine-to-machine
+payments, Circle's Nanopayments is on paper the exact product for them. We
+spiked it properly rather than guessing, and the results are worth reporting
+because the blocker is structural, not a config mistake.
+
+**What works.** `@circle-fin/x402-batching@3.4.0` installs clean, needs no
+Circle API key, and treats Arc Testnet as first class — `arcTestnet` resolves
+to chain `5042002` with `GATEWAY_DOMAINS.arcTestnet = 26`. The Gateway API was
+reachable from our infrastructure and returned our live balances correctly
+(agent `45.493547`, treasury `14.469493` USDC — matching
+`/api/treasury/balances` exactly). The API shape is good, and
+`onBeforePaymentCreation` returning `{ abort: true, reason }` on a spending
+limit is conceptually the same guardrail as our mandate.
+
+**Where it stops.** `GatewayClient` takes a raw private key, calls
+`privateKeyToAccount()`, and signs, deposits and pays **as an EOA**. Our agent
+is an ERC-4337 SimpleAccount: the key we hold is the account's *owner*
+(`0.00665` USDC) while the funds live in the smart account (`45.49` USDC). And
+the shipped bundle contains **zero references to ERC-1271** — so a smart
+account cannot sign a Gateway payment authorization at all.
+
+Every workaround costs more than it buys. Paying from the owner EOA would give
+the agent a second wallet the mandate does not bound — precisely the failure
+this project exists to prevent. Depositing from the smart account via UserOps
+is easy; signing the authorization from it is impossible as shipped. Migrating
+the agent to an EOA would trade real UserOps, our own Paymaster and verifiable
+EntryPoint receipts for an SDK checkbox.
+
+**The ask.** Circle's Arc and Paymaster material points builders toward ERC-4337
+smart accounts, and Agent Stack's headline use case is autonomous agents with
+policy-bounded wallets — which *is* a smart-account pattern. Shipping an
+EOA-only nanopayments client means a team following both halves of Circle's own
+guidance collides with itself. ERC-1271 signature support, or a documented
+smart-account deposit-and-authorize path, would close that.
+
 ### What was hard
 
 - **Confirmation latency is a UX problem, not just a number.** A real payment
