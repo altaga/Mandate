@@ -161,12 +161,21 @@ scratch/
 .wrangler.toml.local
 wrangler.toml
 
-# Per-user internal planning / AI-specific handoff documents
+# Everything that isn't the app, the subgraph, README.md or AGENTS.md lives
+# here and stays out of the repo — internal planning, handoff notes, the
+# World ID reference blueprint, and the docs whose content now lives in
+# README.md. Kept on disk, deliberately not committed.
+_local-docs/
+
+# Legacy locations, kept ignored so old checkouts stay clean
 AGENT_HANDOFF.md
 GPT_CORE.MD
-
-# Hidden local documentation (not committed)
 Docs-h/
+docs/
+World/
+JUDGING.md
+SECURITY.md
+handoff.md
 
 # Temporary bundled / build artifacts
 temp-*.js
