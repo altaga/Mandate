@@ -73,6 +73,22 @@ export const TrafficLabService = {
     return data;
   },
 
+  // Cheap single-row read (traffic_glitch, not the write-heavy traffic_hits
+  // table) — used for a lightweight poll instead of the full fetchStats()
+  // aggregate, which was firing far more often than the fault mode itself
+  // ever actually changes.
+  async fetchGlitchMode() {
+    const response = await fetch('/api/traffic/glitch');
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('Glitch state temporarily unavailable');
+    }
+    if (!response.ok) throw new Error(data.error || 'Failed to read glitch state');
+    return data;
+  },
+
   async setGlitch(mode, latencyMs) {
     const response = await fetch('/api/traffic/glitch', {
       method: 'POST',
