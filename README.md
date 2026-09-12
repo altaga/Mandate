@@ -258,6 +258,28 @@ curl -X POST https://api.studio.thegraph.com/query/1758530/mandate-vendor-reputa
   -d '{"query":"{ vendorReputations(first:10){ id totalOps successCount successRate } }"}'
 ```
 
+At the time of writing that query returns real indexed rows — `503`, `72`, `11`
+operations against distinct vendor addresses — and the same values surface in
+`/api/vendor/reputation` as `reputationSource: "live_subgraph"` (the Graph
+oracle vendor is carrying 53 real on-chain samples).
+
+<!-- Screenshots below are placeholders: replace the PNG files in place,
+     keeping the same filenames, and these captions stay correct. -->
+
+**The deployed subgraph in Subgraph Studio** — version, sync status, and the
+query URL this README points at.
+
+![Subgraph Studio](app/assets/screenshots/07-thegraph-studio.png)
+
+**The same query in the playground**, returning real indexed reputation rows.
+
+![Playground query](app/assets/screenshots/08-thegraph-playground.png)
+
+**The Network Gateway** behind the live liveness sponsor and the indexer-lag
+risk score.
+
+![Network Gateway](app/assets/screenshots/09-thegraph-gateway.png)
+
 <a id="arc"></a>
 
 ### 🔶 Arc / Circle — the settlement rail *and* a sponsor
