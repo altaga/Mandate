@@ -4,7 +4,12 @@ const ROUTES = {
   probe: '/api/traffic/probe'
 };
 
-const TARGETS = ['health', 'probe', 'balances'];
+// The simulator exists to put load on the services being chaos-tested and
+// show what the fault does to them. 'balances' is deliberately excluded from
+// the fault (it's how the agent reads its own budget — see FAULTABLE_PATHS in
+// withLabGlitch.js), so including it here only diluted the log with rows that
+// stay green no matter what the Fault Injector is set to.
+const TARGETS = ['health', 'probe'];
 
 export const TrafficLabService = {
   async probe({ target, worker, timeoutMs = 4000 }) {

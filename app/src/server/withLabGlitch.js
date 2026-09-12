@@ -16,8 +16,18 @@ import { recordServiceHit, getServiceHealth } from './infraHealthStore';
  *    the control plane you're trying to watch respond is backwards. A genuine
  *    LLM outage is already handled for real by callAgentReason()'s
  *    deterministic fallback in infraFailoverService.js.
+ *  - Deliberately NOT 'balances' either, for the same reason: it is how the
+ *    agent reads its own budget. Faulting it was tried and deadlocks by
+ *    construction — confirmed directly. With the fault up from the start the
+ *    first balance read fails, the agent reasons against $0.0000, and refuses
+ *    its own recovery as unaffordable ("Budget is $0.0000 USDC, so no paid
+ *    action can be taken"), including the FREE sponsors. It cannot read its
+ *    budget until it fails over, and it will not fail over until it can read
+ *    its budget. An agent that cannot know its own solvency cannot make any
+ *    decision, so solvency is control plane. It stays fully monitored,
+ *    tracked and sponsor-backed — it just isn't the fault's victim.
  */
-const FAULTABLE_PATHS = new Set(['health', 'balances', 'probe']);
+const FAULTABLE_PATHS = new Set(['health', 'probe']);
 
 /**
  * @param sponsorFallback optional () => Promise<Response> — a REAL alternate

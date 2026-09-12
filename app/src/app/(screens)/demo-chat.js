@@ -35,7 +35,7 @@ export default function DemoChatScreen() {
   const router = useRouter();
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
-  const { treasury, budget, unallocated, status: treasuryStatus, error: treasuryError, address, agentAddress, lastRefresh, refresh, confirmGrant, spend } = useAgentTreasury();
+  const { treasury, budget, budgetKnown, unallocated, status: treasuryStatus, error: treasuryError, address, agentAddress, lastRefresh, refresh, confirmGrant, spend } = useAgentTreasury();
   const mandateFunded = budget > 0;
   const lab = useTrafficLab();
   const [activeTab, setActiveTab] = useState('chat');
@@ -94,6 +94,7 @@ export default function DemoChatScreen() {
 
   const infraHealth = useInfraHealth({
     budget,
+    budgetKnown,
     onSpend: spend,
     onFailoverEvent: handleFailoverEvent,
     onRecoveryEvent: handleRecoveryEvent,

@@ -29,7 +29,7 @@ const POLL_INTERVAL = 3000;
 // load on top.
 const HEARTBEAT_INTERVAL = 1500;
 
-export function useInfraHealth({ budget, onSpend, onFailoverEvent, onRecoveryEvent } = {}) {
+export function useInfraHealth({ budget, budgetKnown, onSpend, onFailoverEvent, onRecoveryEvent } = {}) {
   const [services, setServices] = useState([]);
   const [overallStatus, setOverallStatus] = useState('healthy');
   const [activeFailovers, setActiveFailovers] = useState(0);
@@ -39,11 +39,13 @@ export function useInfraHealth({ budget, onSpend, onFailoverEvent, onRecoveryEve
   const onFailoverRef = useRef(onFailoverEvent);
   const onRecoveryRef = useRef(onRecoveryEvent);
   const budgetRef = useRef(budget);
+  const budgetKnownRef = useRef(budgetKnown);
   const onSpendRef = useRef(onSpend);
 
   useEffect(() => { onFailoverRef.current = onFailoverEvent; }, [onFailoverEvent]);
   useEffect(() => { onRecoveryRef.current = onRecoveryEvent; }, [onRecoveryEvent]);
   useEffect(() => { budgetRef.current = budget; }, [budget]);
+  useEffect(() => { budgetKnownRef.current = budgetKnown; }, [budgetKnown]);
   useEffect(() => { onSpendRef.current = onSpend; }, [onSpend]);
 
   const poll = useCallback(async () => {
@@ -58,6 +60,16 @@ export function useInfraHealth({ budget, onSpend, onFailoverEvent, onRecoveryEve
     for (const svc of data.services) {
       // ── Needs failover ──────────────────────────────────────────────────────
       if (svc.needsFailover) {
+        // Don't decide affordability against a budget we haven't read yet.
+        // /api/treasury/balances is itself one of the paths a fault can break,
+        // so the very first read can fail — and reasoning over the resulting
+        // 0 made the agent refuse its only PAID sponsor (health → The Graph,
+        // $0.00004) as unaffordable and post a "failover blocked" it then
+        // contradicted seconds later. Free failovers still proceed
+        // immediately, and one of those (balances → Arc RPC) is exactly what
+        // restores the ability to read the budget.
+        if (svc.fallbackCost > 0 && !budgetKnownRef.current) continue;
+
         const event = await executeFailover(svc, budgetRef.current || 0, onSpendRef.current);
         if (event && onFailoverRef.current) {
           onFailoverRef.current(event);

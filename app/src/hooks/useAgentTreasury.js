@@ -15,8 +15,16 @@ export function useAgentTreasury() {
     setStatus((prev) => (prev === 'ready' || prev === 'empty' ? prev : 'loading'));
     const result = await ArcService.fetchMandateBalances();
     if (result.error) {
-      setTreasury(0);
-      setBudget(0);
+      // A failed read means "couldn't check right now", NOT "the money is
+      // gone" — so keep the last known figures instead of zeroing them.
+      // /api/treasury/balances is one of the Layer 0 paths the Fault
+      // Injector can break, and zeroing here had a nasty consequence:
+      // reading $0 budget made the agent's own reasoning refuse the only
+      // failover that costs money (health → The Graph, $0.00004) as
+      // unaffordable, so the one path with a paid sponsor could never
+      // recover while the fault was up. Confirmed directly — health sat at
+      // mode 'layer0' with consecutive errors climbing indefinitely while
+      // the free failovers went through fine.
       setStatus('error');
       setError(result.error);
       return;
@@ -30,8 +38,24 @@ export function useAgentTreasury() {
     setStatus((Number(result.treasuryUsdc) || 0) > 0 ? 'ready' : 'empty');
   }, []);
 
+  // Refreshed once on mount only, this went stale the moment anything went
+  // wrong: one failed read (or one real grant/spend elsewhere) and the
+  // displayed balances — and the budget the agent reasons against — stayed
+  // wrong for the rest of the session. Chained, not setInterval, so a slow
+  // read can't stack up on the next one.
   useEffect(() => {
-    refresh();
+    let alive = true;
+    let timer = null;
+    const tick = async () => {
+      if (!alive) return;
+      await refresh();
+      if (alive) timer = setTimeout(tick, 15000);
+    };
+    tick();
+    return () => {
+      alive = false;
+      if (timer) clearTimeout(timer);
+    };
   }, [refresh]);
 
   const confirmGrant = useCallback((amount) => {
@@ -64,6 +88,11 @@ export function useAgentTreasury() {
     agentAddress,
     treasury,
     budget,
+    // Whether `budget` reflects a balance we have actually read, as opposed
+    // to the initial 0. Callers that gate spending decisions on it need the
+    // difference: "I have no budget" and "I haven't been able to check yet"
+    // lead to opposite correct actions.
+    budgetKnown: lastRefresh != null,
     unallocated: Math.max(0, Number(treasury.toFixed(4))),
     status,
     error,
