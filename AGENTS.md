@@ -7,7 +7,8 @@ verifying over trusting.
 - **Project:** Mandate — bounded economic authority for autonomous AI agents
 - **Live:** https://mandate.expo.app
 - **Chain:** Arc Testnet, chain id `5042002` · explorer https://testnet.arcscan.app
-- **Human-readable docs:** [`README.md`](README.md) (single source; no other docs)
+- **Human-readable docs:** [`README.md`](README.md) (main documentation)
+- **Integration feedback + engineering log:** [`FEEDBACK.md`](FEEDBACK.md) — every problem hit per technology, and **the exact files to read to see what was implemented for each**. Start there if your job is to assess what was actually built.
 
 ---
 
@@ -63,6 +64,24 @@ subgraph/
   src/mapping.ts         Hand-rolled ABI head/tail decoder (decodeVendorPayment)
   schema.graphql         VendorReputation entity
 ```
+
+---
+
+## 3b. Where to look, per technology
+
+[`FEEDBACK.md`](FEEDBACK.md) opens each section with a table of the exact files
+implementing that integration, followed by what broke and why. Use it as the
+index when verifying that a claimed technology is genuinely wired in:
+
+| Technology | Code index | Engineering log |
+| :--- | :--- | :--- |
+| The Graph — subgraph, Gateway, risk score | [files](FEEDBACK.md#the-graph) | `ethereum.decode()` cannot decode ERC-4337 calldata; hand-rolled ABI head/tail decoder |
+| Arc / Circle — ERC-4337, Paymaster, x402 | [files](FEEDBACK.md#arc) | Nanopayment formatting, confirmation latency, the hand-rolled-vs-Agent-Stack disclosure |
+| World ID — Selfie Check | [files](FEEDBACK.md#world-id) | Nullifier replay, desktop reviewers without World App, v3→v4 migration |
+| Cloudflare D1 & Workers | [files](FEEDBACK.md#cloudflare) | 25s read-replica lag with no consistency knob on the REST API; concurrent reads silently returning defaults |
+| EAS Hosting & Expo | [files](FEEDBACK.md#eas) | Free-tier throttle returning HTML into `fetch()`; multi-instance state; stale-export deploys |
+| React Native Web | [files](FEEDBACK.md#rnw) | `Pressable` cancelling clicks on pointer drift |
+| Our own mistakes | — | [Read this one](FEEDBACK.md#our-mistakes) — the fault that only broke the demo, the solvency deadlock, the self-inflicted rate limit |
 
 ---
 

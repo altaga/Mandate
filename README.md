@@ -17,6 +17,7 @@ when something goes wrong.**
 | 🌐 **Live platform** | **https://mandate.expo.app** |
 | 🚀 **Quick guide — break it yourself in 60 seconds** | [jump ↓](#quick-guide) |
 | 🤖 **For AI agents / automated review** | [`AGENTS.md`](AGENTS.md) |
+| 🧾 **Integration feedback & engineering log** — every problem we hit, per technology, with the code to check | [`FEEDBACK.md`](FEEDBACK.md) |
 | 🔍 **Verify every claim without trusting the UI** | [jump ↓](#verify) |
 | 🧭 **How it actually works** | [jump ↓](#how-it-works) |
 
@@ -308,6 +309,7 @@ this agent's spending authority right now.*
 #### World ID — developer feedback
 
 *Required by the track, and genuinely meant — this is what we hit building it.*
+*Extended version, plus feedback on every other integration and the exact code to review for each:* **[`FEEDBACK.md`](FEEDBACK.md#world-id)**.
 
 **Selfie Check docs & integration flow.** The IDKit v4 separation between the
 React component and server-side verification is clear, and the zero-knowledge
@@ -396,6 +398,28 @@ https://mandate.expo.app/api/traffic/glitch -H "Content-Type: application/json"
 
 ---
 
+## Integration feedback
+
+Building this meant fighting several of these platforms in ways worth writing
+down — a `graph-node` decoder that cannot decode ERC-4337 calldata, D1 read
+replicas serving 25-second-stale data with no consistency knob on the REST API,
+a hosting throttle returning HTML into a `fetch()`, and a handful of mistakes
+that were entirely our own.
+
+**[`FEEDBACK.md`](FEEDBACK.md)** is the full engineering log, organised per
+technology. Each section opens with the **exact files to read** for that
+integration, so a reviewer can see what was implemented without taking any of
+it on trust:
+[The Graph](FEEDBACK.md#the-graph) ·
+[Arc / Circle](FEEDBACK.md#arc) ·
+[World ID](FEEDBACK.md#world-id) ·
+[Cloudflare D1](FEEDBACK.md#cloudflare) ·
+[EAS Hosting & Expo](FEEDBACK.md#eas) ·
+[React Native Web](FEEDBACK.md#rnw) ·
+[our own mistakes](FEEDBACK.md#our-mistakes).
+
+---
+
 ## Known limitations
 
 We would rather list these than have them found.
@@ -428,7 +452,8 @@ app/          The application — Expo Router frontend + server API routes,
               Paymaster and x402 vendor Workers, screenshots
 subgraph/     Our deployed subgraph: schema, hand-rolled ABI decoder, tests
 AGENTS.md     Machine-readable brief for AI agents reviewing this repo
-README.md     You are here — the single source of documentation
+FEEDBACK.md   Integration feedback + engineering log, with code pointers
+README.md     You are here — the main documentation
 ```
 
 ---
