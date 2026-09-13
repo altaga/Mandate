@@ -44,7 +44,7 @@ in [Why the sponsors **are** the system](#why-the-sponsors-are-the-system).
 
 ### Judges — jump straight to your track
 
-| Track | Why we should win it | Evidence |
+| Track | Why we are applicable | Evidence |
 | :--- | :--- | :--- |
 | **The Graph** — Best AI Tooling or AI Use Case *(Start Fresh)* | We deployed **our own subgraph** that hand-decodes ERC-4337 calldata `graph-node` cannot decode, and it is **load-bearing three times over**: it decides who the agent is allowed to pay, it can **halt a real payment** before it is signed, and it is the **paid fallback that serves live traffic** during an outage. Not a dashboard reading a subgraph — a subgraph that moves money. | [→ The Graph section](#the-graph) |
 | **Arc / Circle** — Best Agentic Economy Application | Real ERC-4337 UserOps on Arc Testnet with **nanopayment-scale service payments ($0.00004 USDC per sponsor activation)**, gas sponsored by our own Paymaster, driven by an agent whose decision logic reads **real measured signals** — error rate, latency, live budget, on-chain reputation — and whose spend is bounded by a real on-chain balance it cannot exceed. | [→ Arc section](#arc) |
