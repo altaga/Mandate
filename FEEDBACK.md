@@ -31,7 +31,8 @@ Main documentation: [`README.md`](README.md) · Agent brief: [`AGENTS.md`](AGENT
 | [`subgraph/src/mapping.ts`](subgraph/src/mapping.ts) | The hand-rolled ABI head/tail decoder (`decodeVendorPayment`) — the core workaround described below |
 | [`subgraph/schema.graphql`](subgraph/schema.graphql) | `VendorReputation` entity aggregated from real on-chain events |
 | [`subgraph/subgraph.yaml`](subgraph/subgraph.yaml) | Arc Testnet data source, EntryPoint address, event handler wiring |
-| [`app/src/services/graphService.js`](app/src/services/graphService.js) | Gateway queries: chain head, USDC telemetry, indexer-lag risk score |
+| [`app/src/services/graphService.js`](app/src/services/graphService.js) | Gateway freshness oracle: chain head, USDC telemetry, indexer-lag risk score. Queries a public high-volume subgraph, not ours — see the header comment |
+| [`app/src/utilsAPI/vendorReputationGraph.js`](app/src/utilsAPI/vendorReputationGraph.js) | Queries **our own** subgraph — this is the one that gates who gets paid |
 | [`app/src/app/api/graph/context+api.js`](app/src/app/api/graph/context+api.js) | Server-side Gateway proxy (keeps `GRAPH_API_KEY` off the client) |
 | [`app/src/app/api/vendor/reputation+api.js`](app/src/app/api/vendor/reputation+api.js) | Subgraph-first reputation resolution (`reputationSource`) |
 | [`app/src/app/api/health+api.js`](app/src/app/api/health+api.js) | The Graph as a paid liveness sponsor (`fetchHealthViaGraphSponsor`) |
@@ -465,6 +466,19 @@ failed read means *could not check*, not *the money is gone*
 simulator pushed us over the hosting rate limit and pulled real `429`s into the
 demo. The heartbeat now stays quiet while the simulator is running — it exists
 to guarantee signal when nothing else provides it, not to add to it.
+
+**A fallback that lied.** `graphService.js` defaulted to hardcoded values when
+the Gateway didn't answer — a block number, a block hash, a `trustScore: 99.2`,
+a `transactionCount: 42` — while still reporting `SUCCESS_LIVE_INDEXED`. Two
+ways it could bite: the block number is what `/api/health` serves as *proof of
+liveness* when The Graph is the paid sponsor, so a Gateway outage could have
+served a months-old block as proof; and because a GraphQL error body arrives
+with **HTTP 200**, `response.ok` never caught it. The invented account and
+merchant stats turned out to have no consumer at all and are gone; every
+remaining field is what the Gateway returned or `null`; and an outage now fails
+closed — `REQUIRE_HUMAN_REVIEW` at the payment gate, and a health sponsor that
+throws rather than reporting `online` over a missing block
+([`app/src/services/graphService.js`](app/src/services/graphService.js)).
 
 ---
 

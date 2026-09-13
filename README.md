@@ -243,14 +243,23 @@ paying anyone.
 > before touching AssemblyScript.
 
 **2. A risk score that can stop a payment.** `graphService.js` queries the
-Network Gateway for real chain-head data and derives an indexer-lag risk score
-— not a constant. When it returns `REQUIRE_HUMAN_REVIEW`, the payment halts
-before it is signed.
+decentralized Network Gateway and derives an indexer-lag risk score from
+`_meta.block.timestamp` — how many seconds behind chain head a real indexer
+actually is on that call, not a constant. When it returns
+`REQUIRE_HUMAN_REVIEW`, the payment halts before it is signed.
+
+> **Two subgraphs, and we're explicit about which is which.** The reputation
+> that gates payment comes from **our own** subgraph above. The freshness signal
+> in **2** and **3** is read from a large public subgraph (Uniswap V3 mainnet)
+> through the Gateway, because a continuously-indexed subgraph is what makes
+> indexer lag a meaningful reading — a low-traffic subgraph would look "stale"
+> simply for lack of events. We consume it as an oracle; we don't claim it.
 
 **3. Liveness the agent pays for.** When `health` degrades, the fallback is a
 real Gateway query for the latest indexed block. `/api/health` is then genuinely
 served by The Graph (`servedBy: "The Graph (sponsor)"`, live `blockNumber`) for
-$0.00004 USDC per call, paid on-chain.
+$0.00004 USDC per call, paid on-chain. If the Gateway can't return a block, the
+sponsor **fails** rather than reporting `online` — no block, no proof.
 
 ```bash
 curl -X POST https://api.studio.thegraph.com/query/1758530/mandate-vendor-reputation/v0.0.4 \
@@ -420,6 +429,7 @@ requires believing the UI.
 | Health state is real and shared | `curl https://mandate.expo.app/api/infra/status` returns the state the UI renders |
 | Counters are live, not hardcoded | `curl https://mandate.expo.app/api/traffic/stats`, run traffic, curl again — the totals move |
 | Payments are real | Every `Tx: 0x…` opens on Arcscan; the same payment appears in our own subgraph |
+| The risk score is measured, not constant | `curl -X POST https://mandate.expo.app/api/graph/context` twice — `blockNumber` advances and `indexerLagSeconds` moves. Every field is what the Gateway returned or `null`; nothing is defaulted |
 
 Clear the fault when you are done — `curl -X POST
 https://mandate.expo.app/api/traffic/glitch -H "Content-Type: application/json"
@@ -507,6 +517,21 @@ the reasoning matters more than the decision:
   its own requests actually received, which is immune to D1 read-replica lag.
   The durable, cross-session, judge-checkable record stays server-side at
   `/api/traffic/stats`.
+- **The indexer-lag oracle reads someone else's subgraph, on purpose.** Lag is
+  only a meaningful reading on a subgraph that indexes continuously, so
+  `graphService.js` measures it against Uniswap V3 mainnet through the Gateway.
+  Our own subgraph is what gates payment; this one is a clock. Both are labelled
+  as such in the code.
+
+**One thing we had to go back and fix.** `graphService.js` used to fall back to
+hardcoded values — a block number, a hash, a `trustScore: 99.2` — whenever the
+Gateway didn't answer, and still reported `SUCCESS_LIVE_INDEXED`. It was
+invisible because the Gateway rarely fails, but it meant a Gateway outage could
+have served a stale block as *proof of liveness*. Every field is now either what
+the Gateway actually returned or `null`, the invented account/merchant stats are
+gone entirely (nothing consumed them), and a Gateway outage now fails **closed**:
+`REQUIRE_HUMAN_REVIEW` for the payment gate, and a sponsor that reports failure
+instead of `online`.
 
 **An operational ceiling, not a product one.** The deployment runs on EAS
 Hosting's free tier, which throttles sustained request rates and returns `429`

@@ -148,6 +148,12 @@ export async function executeSponsorCall(path) {
       });
       if (!res.ok) throw new Error(`graph/context API ${res.status}`);
       const data = await res.json();
+      // A Gateway outage still answers this route with HTTP 200 carrying a
+      // fail-closed verdict, so the status code alone doesn't tell us the
+      // sponsor delivered. Only a real indexed block counts as service served.
+      if (data?.blockNumber == null) {
+        throw new Error(`Graph sponsor returned no indexed block: ${data?.liveGraphResponseStatus}`);
+      }
       return { ok: true, data, source: 'The Graph' };
     }
     if (sponsorCfg.method === 'directRpc') {

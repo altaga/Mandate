@@ -49,7 +49,10 @@ app/
   src/services/
     infraFailoverService.js  Agent orchestration: reason → pay → activate →
                              recover, plus the agent's own heartbeat
-    graphService.js      The Graph Gateway queries + indexer-lag risk score
+    graphService.js      The Graph Gateway queries + indexer-lag risk score.
+                         Reads a public high-volume subgraph as a freshness
+                         clock — NOT our reputation subgraph (that one is in
+                         utilsAPI/vendorReputationGraph.js)
     arcService.js        Arc RPC, balances, ERC-4337 payment entry points
     agentService.js      NL command handling, vendor hiring, x402 flow
   src/hooks/
@@ -103,6 +106,11 @@ index when verifying that a claimed technology is genuinely wired in:
    billing ceiling, not infrastructure failing.
 7. **Panel counters are client-side on purpose.** D1 read replicas lag under
    write load; the durable record is server-side at `/api/traffic/stats`.
+8. **No Gateway value is ever defaulted.** `graphService.js` returns what The
+   Graph actually answered or `null` — never a stand-in. A GraphQL error body
+   arrives with HTTP 200, so `response.ok` is not a success check. Outages fail
+   **closed**: `REQUIRE_HUMAN_REVIEW`, and a health sponsor that throws rather
+   than reporting `online` over a missing block.
 
 ---
 
@@ -148,6 +156,16 @@ The same values appear as `reputationSource: "live_subgraph"` in:
 curl https://mandate.expo.app/api/vendor/reputation
 ```
 
+### The risk score is measured, not a constant
+
+```bash
+curl -X POST https://mandate.expo.app/api/graph/context   # twice, a few seconds apart
+```
+
+`blockNumber` advances and `indexerLagSeconds` moves. `liveGraphResponseStatus`
+is `SUCCESS_LIVE_INDEXED` only when a real block came back; otherwise every data
+field is `null` and `riskEvaluation.recommendation` is `REQUIRE_HUMAN_REVIEW`.
+
 ### Escalation gate
 
 In Agent Chat, ask the agent to hire `ResilientDB` ($1.20 — above its budget).
@@ -181,6 +199,11 @@ these as a regression, not an improvement):
   would claim a recovery that cannot happen.
 - Traffic panel counters are client-side: immune to D1 read-replica lag. The
   durable record is server-side at `/api/traffic/stats`.
+- `graphService.js` queries a public Uniswap V3 subgraph, not ours. Indexer lag
+  is only meaningful on a continuously-indexed subgraph; it is a clock, and it
+  is labelled `subgraphRole: 'gateway-liveness-oracle'` in the response. Vendor
+  reputation — the part that gates payment — comes from our own subgraph via
+  `utilsAPI/vendorReputationGraph.js`.
 
 **Circle stack scope:** ERC-4337 primitives are implemented directly with
 `ethers.js` plus our own deployed Paymaster, rather than via Circle's Agent

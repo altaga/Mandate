@@ -6,7 +6,15 @@ import { GraphService } from '../../services/graphService';
 // the local status flags. Runs server-side, where GRAPH_API_KEY is available
 // (unlike calling GraphService straight from browser JS).
 async function fetchHealthViaGraphSponsor() {
-  const context = await GraphService.queryOnchainContext({});
+  const context = await GraphService.queryOnchainContext();
+  // The sponsor's whole claim is "a real indexed block proves this service is
+  // live". With no block there is no proof, so throwing is the honest outcome —
+  // withLabGlitch catches it and surfaces the real Layer 0 failure instead of
+  // reporting 'online' over a null. Previously this path could serve a
+  // hardcoded block number when the Gateway was unreachable.
+  if (context.blockNumber == null) {
+    throw new Error(`Graph sponsor could not prove liveness: ${context.liveGraphResponseStatus}`);
+  }
   return Response.json({
     status: 'online',
     servedBy: 'The Graph (sponsor)',

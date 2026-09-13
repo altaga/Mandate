@@ -129,7 +129,7 @@ export const AgentService = {
         const graphRes = await fetch(`${baseUrl}/api/graph/context`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ walletAddress: env.agentAddress }),
+          body: JSON.stringify({}),
         });
         if (!graphRes.ok) throw new Error(`graph/context API ${graphRes.status}`);
         const graphContext = await graphRes.json();
