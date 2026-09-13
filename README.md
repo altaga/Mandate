@@ -11,20 +11,15 @@ when something goes wrong.**
 ### The whole system, in one picture
 
 ```mermaid
-graph LR
-  Human["👤 Human"]
-  World["🌍 World ID<br/>Selfie Check"]
-  Agent["🤖 Mandate Agent<br/>bounded USDC budget"]
-  Graph["🔷 The Graph<br/>who is safe to pay"]
-  Arc["🔶 Arc + USDC<br/>the payment itself"]
-  Service["✅ Service stays online"]
-
-  Human -->|"grants authority"| World
+%%{init: {'flowchart': {'rankSpacing': 28, 'nodeSpacing': 90}}}%%
+graph TB
+  Human["👤 Human"] -->|"grants authority"| World["🌍 World ID<br/>Selfie Check<br/><i>who may grant authority</i>"]
   World -->|"proven human"| Agent
-  Graph -->|"on-chain reputation"| Agent
-  Agent -->|"pays a sponsor"| Arc
-  Arc --> Service
+  Graph["🔷 The Graph<br/><i>who is safe to pay</i>"] -->|"on-chain reputation"| Agent["🤖 Mandate Agent<br/><b>bounded USDC budget</b>"]
+  Agent -->|"pays a sponsor"| Arc["🔶 Arc + USDC<br/><i>the payment itself</i>"]
   Agent -.->|"cost over its authority"| World
+  Arc --> Service["✅ Service stays online"]
+  Service -.->|"recovered — stop paying"| Agent
 
   style Agent fill:#1e293b,stroke:#64748b,color:#e2e8f0
 ```
