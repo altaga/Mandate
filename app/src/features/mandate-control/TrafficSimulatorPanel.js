@@ -18,7 +18,7 @@ export function TrafficSimulatorPanel({ lab }) {
   } = lab;
 
   // Hosting throttles (429 from the EAS free tier) are deliberately NOT
-  // failures — they say nothing about Layer 0's health, and folding them in
+  // failures — they say nothing about the first-party service's health, and folding them in
   // made a plan limit look exactly like the injected fault's effect.
   const fail   = (stats.errors || 0) + (stats.timeouts || 0);
   const throttled = stats.throttled || 0;

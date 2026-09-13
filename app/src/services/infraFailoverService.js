@@ -6,7 +6,7 @@
  *  1. Poll /api/infra/status for per-service health
  *  2. Detect threshold breaches and trigger failover payments
  *  3. Execute real sponsor calls (The Graph, Arc RPC) as fallbacks
- *  4. Detect Layer 0 recovery and return to free tier
+ *  4. Detect first-party recovery and return to free tier
  *  5. Emit structured events for Mission Control chat log
  *
  * Real sponsor calls:
@@ -37,7 +37,7 @@ export async function pollInfraHealth() {
   }
 }
 
-// ─── Independent Layer 0 heartbeat ────────────────────────────────────────────
+// ─── Independent first-party heartbeat ────────────────────────────────────────────
 // The agent has to be able to notice its own infrastructure degrading by
 // itself. Polling /api/infra/status only reads back health that something
 // else's requests produced — and the only thing reliably generating requests
@@ -47,7 +47,7 @@ export async function pollInfraHealth() {
 //
 // This is the agent's own pulse. It touches each service it depends on, on its
 // own schedule, whether or not anyone is watching, and the server records the
-// true Layer 0 outcome of each beat — which is exactly the signal the
+// true first-party outcome of each beat — which is exactly the signal the
 // threshold math in infraHealthStore then acts on.
 const HEARTBEAT_PATHS = ['health', 'balances', 'probe'];
 const HEARTBEAT_TARGETS = ['/api/health', '/api/treasury/balances', '/api/traffic/probe?worker=agent-heartbeat'];
@@ -112,15 +112,15 @@ async function callAgentReason(event, context, budget) {
         cost: context?.fallbackCost || 0,
         reply: `Threshold crossed on ${context?.path}. Switching to ${context?.fallbackSponsor || 'sponsor'} fallback.`,
         logs: [
-          `Layer 0 ${context?.path} errorRate: ${((context?.errorRate || 0) * 100).toFixed(1)}%`,
+          `First-party ${context?.path} errorRate: ${((context?.errorRate || 0) * 100).toFixed(1)}%`,
           `Threshold breached. Sponsor fallback: ${context?.fallbackSponsor}.`,
           `Cost $${context?.fallbackCost || 0} within budget $${budget?.toFixed(4)}.`,
         ],
       };
     }
     return {
-      action: 'RETURN_TO_LAYER0',
-      reply: `Layer 0 ${context?.path} recovered. Returning to own server.`,
+      action: 'RETURN_TO_FIRST_PARTY',
+      reply: `First-party ${context?.path} recovered. Returning to own server.`,
       logs: ['Recovery confirmed.'],
     };
   }
@@ -272,7 +272,7 @@ export async function executeFailover(service, budget, onSpend) {
 }
 
 /**
- * Handle recovery: confirm Layer 0 is stable, return to free tier.
+ * Handle recovery: confirm the first-party service is stable, return to free tier.
  *
  * @param {object} service  - health object (mode === 'recovering', recoveryProbes >= needed)
  * @param {number} budget
@@ -296,7 +296,7 @@ export async function executeRecovery(service, budget) {
   }).catch(() => {});
 
   return {
-    type: 'LAYER0_RECOVERED',
+    type: 'FIRST_PARTY_RECOVERED',
     path,
     reply: decision.reply,
     logs: decision.logs || [],

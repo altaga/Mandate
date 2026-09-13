@@ -46,14 +46,14 @@ So we built the hard half, and then ran it under real damage: **an agent with a
 real USDC budget, keeping real infrastructure alive while we break that
 infrastructure underneath it.**
 
-When Layer 0 — the services the agent depends on — degrades, the agent must,
-with nobody in the loop:
+When its first-party services — the ones the agent depends on — degrade, the
+agent must, with nobody in the loop:
 
 1. **Notice** on its own signal, not because someone was watching a dashboard.
 2. **Decide** against real constraints: live budget, provider cost, on-chain reputation.
 3. **Pay** a real counterparty, on-chain, within an authority it cannot exceed.
 4. **Keep serving** — traffic must actually recover, not just a badge turning green.
-5. **Stop paying** once Layer 0 returns.
+5. **Stop paying** once the first-party service returns.
 6. **Escalate** to a verified human when the fix costs more than it is allowed to spend.
 
 **Every one of those six steps is carried by a sponsor integration.** That is
@@ -74,8 +74,9 @@ right panel injects real faults, the middle is the agent thinking out loud.
 
 ![Mission Control](app/assets/screenshots/02-mission-control.png)
 
-**The signature moment.** The Fault Injector still reads `ERROR` — Layer 0 is
-still broken — yet the traffic log has gone green, because the agent detected
+**The signature moment.** The Fault Injector still reads `ERROR` — the
+first-party service is still broken — yet the traffic log has gone green,
+because the agent detected
 the outage, paid a sponsor on-chain, and rerouted through it. Note the agent's
 own reasoning in the middle, and that a hosting-plan throttle is labelled as
 such instead of being passed off as an infrastructure failure.
@@ -100,10 +101,10 @@ Open **https://mandate.expo.app** and:
 
 1. **Enter Mission Control.** The header shows the agent's live on-chain budget — that number is a real Arc Testnet wallet balance, not a counter.
 2. **Open `TRAFFIC`** (left edge) → press **START WORKERS**. Every row that appears is a real HTTP request with its own real status and timing.
-3. **Open `GLITCH`** (right edge) → press **ERROR / HTTP 503**. You just broke Layer 0 for real, for everyone — including `curl`.
+3. **Open `GLITCH`** (right edge) → press **ERROR / HTTP 503**. You just broke a first-party service for real, for everyone — including `curl`.
 4. **Watch the middle.** Within seconds the agent notices, reasons out loud about cost against its budget, pays a sponsor on-chain, and posts the transaction hash.
 5. **Watch the traffic log go green *while the fault is still on*.** That is the whole thesis: the traffic recovered because the agent bought a way out, not because the problem stopped.
-6. **Press `CLEAN`.** Layer 0 returns, the agent confirms recovery over 5 clean probes and stops paying the sponsor.
+6. **Press `CLEAN`.** The first-party service returns, the agent confirms recovery over 5 clean probes and stops paying the sponsor.
 7. **Tap any `Tx: 0x…`** to open the real transaction on Arcscan.
 
 Want the escalation path instead? Ask the agent in chat to hire a vendor that
@@ -135,7 +136,7 @@ graph TB
 
   subgraph Server["Expo API routes"]
     Guard["withLabGlitch<br/>fault injection + health recording"]
-    L0["Layer 0 services"]
+    L0["First-party services"]
   end
 
   D1[("Cloudflare D1<br/>health + fault state")]
@@ -151,8 +152,8 @@ graph TB
   HB --> Guard
   Guard --> L0
   Guard --> D1
-  Guard -.->|"Layer 0 down, sponsor paid"| TheGraph
-  Guard -.->|"Layer 0 down, sponsor paid"| ArcNet
+  Guard -.->|"first-party down, sponsor paid"| TheGraph
+  Guard -.->|"first-party down, sponsor paid"| ArcNet
   Poll --> D1
   Poll --> FO
   FO -->|"real USDC"| ArcNet
@@ -161,8 +162,8 @@ graph TB
 ```
 
 Fault injection and health recording live in **one server-side wrapper** that
-every Layer 0 route passes through. That is what makes the fault real: it is not
-a client-side visual filter, and it applies to whoever calls the service.
+every first-party route passes through. That is what makes the fault real: it is
+not a client-side visual filter, and it applies to whoever calls the service.
 
 ### The loop, per service
 
@@ -170,13 +171,14 @@ Each tracked service owns its own state. There is no global switch.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> layer0
-  layer0 --> layer0: healthy hit
-  layer0 --> sponsor: errors ≥ threshold<br/>→ reason → pay on-chain → activate
-  sponsor --> sponsor: Layer 0 still down<br/>sponsor serves the traffic for real
-  sponsor --> recovering: first clean Layer 0 hit
-  recovering --> sponsor: Layer 0 fails again
-  recovering --> layer0: 5 clean probes<br/>→ stop paying the sponsor
+  state "first-party" as first_party
+  [*] --> first_party
+  first_party --> first_party: healthy hit
+  first_party --> sponsor: errors ≥ threshold<br/>→ reason → pay on-chain → activate
+  sponsor --> sponsor: first-party still down<br/>sponsor serves the traffic for real
+  sponsor --> recovering: first clean first-party hit
+  recovering --> sponsor: first-party fails again
+  recovering --> first_party: 5 clean probes<br/>→ stop paying the sponsor
 ```
 
 | Service | Trips after | Sponsor | Cost / call |
@@ -213,7 +215,7 @@ and a specific step of the loop stops working:
 | Step | Carried by | Remove it and… |
 | :--- | :--- | :--- |
 | Decide who is worth paying | **The Graph** (own subgraph) | the agent pays failing providers |
-| Keep serving `/health` when Layer 0 is down | **The Graph** (Gateway liveness) | the paid failover has nowhere to go |
+| Keep serving `/health` when the first-party service is down | **The Graph** (Gateway liveness) | the paid failover has nowhere to go |
 | Halt a risky payment before it is signed | **The Graph** (indexer-lag risk score) | the agent transacts on data it cannot vouch for |
 | Move the money | **Arc / Circle** (ERC-4337 + USDC) | there is no payment, only an intent |
 | Keep serving `/balances` and `/probe` | **Arc** (direct RPC) | the agent goes blind to its own solvency |

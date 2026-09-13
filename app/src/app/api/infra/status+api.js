@@ -2,7 +2,7 @@
  * @file status+api.js
  * @description GET /api/infra/status
  *
- * Returns real-time health state for all 5 Layer 0 services.
+ * Returns real-time health state for all 5 first-party services.
  * Polled every 3 s by useInfraHealth hook in the client.
  *
  * NOT wrapped with withLabGlitch — this endpoint must always be reachable
@@ -14,7 +14,7 @@ import { getAllHealth } from '../../../server/infraHealthStore.js';
 export async function GET() {
   const services = await getAllHealth();
 
-  const overallOk = services.every((s) => s.mode === 'layer0' && s.severity === 'ok');
+  const overallOk = services.every((s) => s.mode === 'first-party' && s.severity === 'ok');
   const activeFailovers = services.filter((s) => s.mode === 'sponsor').length;
   const recovering = services.filter((s) => s.mode === 'recovering').length;
   const critical = services.filter((s) => s.severity === 'critical').length;

@@ -2,7 +2,7 @@ import { applyGlitch, recordHit } from './trafficLabStore';
 import { recordServiceHit, getServiceHealth } from './infraHealthStore';
 
 /**
- * Wraps a Layer 0 service handler with fault injection + health recording.
+ * Wraps a first-party service handler with fault injection + health recording.
  *
  * Which paths an injected fault is allowed to break:
  *
@@ -41,7 +41,7 @@ const FAULTABLE_PATHS = new Set(['health', 'probe']);
  * This check is a single deterministic if() on state already computed by pure
  * threshold math in infraHealthStore — no LLM call, no network dependency, so
  * it keeps working even if the MiniMax reasoning API is out of tokens/down.
- * recordServiceHit() below still always records the TRUE Layer 0 outcome
+ * recordServiceHit() below still always records the TRUE first-party outcome
  * either way, so recovery-probe counting stays honest regardless of what the
  * caller actually receives.
  *
@@ -56,7 +56,7 @@ export async function withLabGlitch(request, path, handler, sponsorFallback) {
   // also decide whether an injected fault applied at all, which made the
   // Fault Injector, the Traffic Simulator and the agent one tangled unit: a
   // "down" service was only ever down for the simulator, so the agent could
-  // only discover a broken Layer 0 if a human happened to have the Traffic
+  // only discover a broken first-party service if a human happened to have the Traffic
   // panel running, and every real caller sailed straight through a service
   // the UI was reporting as degraded. The fault now applies to whoever calls
   // the service — the simulator, the agent's own heartbeat, the app's own
@@ -70,14 +70,14 @@ export async function withLabGlitch(request, path, handler, sponsorFallback) {
   if (glitch.blocked) {
     const status = glitch.status;
 
-    // infraHealthStore always gets the TRUE Layer 0 outcome, regardless of
+    // infraHealthStore always gets the TRUE first-party outcome, regardless of
     // what we end up returning to the caller below — recovery-probe counting
-    // must stay honest about whether Layer 0 itself is actually healthy again.
+    // must stay honest about whether the first-party service itself is actually healthy again.
     await recordServiceHit(path, status, Date.now() - started);
 
     // Pure if-decision: an active (or recovering) sponsor already covers this
     // path, so actually serve the caller through it instead of surfacing the
-    // raw Layer 0 failure. This now covers every caller, not just the
+    // raw first-party failure. This now covers every caller, not just the
     // simulator — once the agent has paid to fail a path over, the app's own
     // screens keep working through the sponsor it bought. That is the entire
     // point of the failover, and it was previously invisible outside the lab.
@@ -92,7 +92,7 @@ export async function withLabGlitch(request, path, handler, sponsorFallback) {
         }
         return sponsorResponse;
       } catch {
-        // Sponsor itself failed too — fall through to the real Layer 0 error.
+        // Sponsor itself failed too — fall through to the real first-party error.
       }
     }
 
@@ -100,7 +100,7 @@ export async function withLabGlitch(request, path, handler, sponsorFallback) {
       await recordHit({ path, status, latencyMs: Date.now() - started, ok: false, timeout: Boolean(glitch.timeout), worker });
     }
     return Response.json(
-      { error: glitch.timeout ? 'Layer 0 timeout' : 'Layer 0 unavailable',
+      { error: glitch.timeout ? 'First-party service timeout' : 'First-party service unavailable',
         glitch: glitch.timeout ? 'timeout' : 'error' },
       { status }
     );

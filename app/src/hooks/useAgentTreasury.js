@@ -17,13 +17,13 @@ export function useAgentTreasury() {
     if (result.error) {
       // A failed read means "couldn't check right now", NOT "the money is
       // gone" — so keep the last known figures instead of zeroing them.
-      // /api/treasury/balances is one of the Layer 0 paths the Fault
+      // /api/treasury/balances is one of the first-party paths the Fault
       // Injector can break, and zeroing here had a nasty consequence:
       // reading $0 budget made the agent's own reasoning refuse the only
       // failover that costs money (health → The Graph, $0.00004) as
       // unaffordable, so the one path with a paid sponsor could never
       // recover while the fault was up. Confirmed directly — health sat at
-      // mode 'layer0' with consecutive errors climbing indefinitely while
+      // mode 'first-party' with consecutive errors climbing indefinitely while
       // the free failovers went through fine.
       setStatus('error');
       setError(result.error);

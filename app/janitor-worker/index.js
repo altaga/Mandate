@@ -27,7 +27,7 @@ async function resetIfIdle(env) {
       (SELECT COALESCE(MAX(created_at), 0) FROM traffic_hits)              AS last_lab_hit,
       (SELECT COALESCE(MAX(updated_at), 0) FROM traffic_glitch)            AS glitch_at,
       (SELECT COUNT(*) FROM traffic_glitch WHERE mode <> 'off')            AS fault_on,
-      (SELECT COUNT(*) FROM infra_health_state WHERE mode <> 'layer0')     AS sponsors_active
+      (SELECT COUNT(*) FROM infra_health_state WHERE mode <> 'first-party')     AS sponsors_active
   `).first();
 
   const dirty = (row?.fault_on ?? 0) > 0 || (row?.sponsors_active ?? 0) > 0;
@@ -65,7 +65,7 @@ export default {
         (SELECT COALESCE(MAX(created_at), 0) FROM traffic_hits)          AS last_lab_hit,
         (SELECT COALESCE(MAX(updated_at), 0) FROM traffic_glitch)        AS glitch_at,
         (SELECT COUNT(*) FROM traffic_glitch WHERE mode <> 'off')        AS fault_on,
-        (SELECT COUNT(*) FROM infra_health_state WHERE mode <> 'layer0') AS sponsors_active
+        (SELECT COUNT(*) FROM infra_health_state WHERE mode <> 'first-party') AS sponsors_active
     `).first();
     const idleMs = Date.now() - Math.max(row.last_lab_hit ?? 0, row.glitch_at ?? 0);
     return Response.json({

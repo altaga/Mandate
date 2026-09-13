@@ -33,7 +33,7 @@ export const TrafficLabService = {
         latencyMs: data.latencyMs ?? (Date.now() - started),
         target,
         timeout: false,
-        // 429 here is not Layer 0 failing — it's EAS Hosting's own
+        // 429 here is not the first-party service failing — it's EAS Hosting's own
         // free-tier request-rate limit throttling the deployment ("This
         // deployment is receiving too many requests... upgrade to a paid
         // plan to lift this limit", served as HTML by the edge before our

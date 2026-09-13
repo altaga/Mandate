@@ -6,7 +6,7 @@
  * Wrapped with withLabGlitch so the Traffic Lab can corrupt it —
  * triggering the agent's heuristic failover to The Graph Subgraph.
  *
- * When Layer 0 is healthy: returns local VENDOR_CATALOG data (free).
+ * When the first-party service is healthy: returns local VENDOR_CATALOG data (free).
  * When degraded:           agent switches to GraphService.queryOnchainContext()
  *                          and pays $0.00004 USDC per query to The Graph.
  */
@@ -70,7 +70,7 @@ export async function GET(request) {
 
     return Response.json({
       ok: true,
-      source: 'layer0',
+      source: 'first-party',
       timestamp: new Date().toISOString(),
       vendors,
     });

@@ -15,12 +15,13 @@ verifying over trusting.
 ## 1. What this project is, in one paragraph
 
 An autonomous agent holds a real on-chain USDC budget and is responsible for
-keeping a set of services ("Layer 0") available. When a service degrades, the
-agent detects it on its own heartbeat, reasons about cost against its live
-budget and the provider's on-chain reputation, **pays a real sponsor on-chain**
-to take over that service, keeps traffic flowing through the sponsor while the
-outage persists, stops paying once Layer 0 recovers, and **halts for a World ID
-Selfie Check** when the fix would exceed its authorized budget.
+keeping a set of services (its **first-party services**) available. When one
+degrades, the agent detects it on its own heartbeat, reasons about cost against
+its live budget and the provider's on-chain reputation, **pays a real sponsor
+on-chain** to take over that service, keeps traffic flowing through the sponsor
+while the outage persists, stops paying once the first-party service recovers,
+and **halts for a World ID Selfie Check** when the fix would exceed its
+authorized budget.
 
 ---
 
@@ -42,7 +43,7 @@ Full requirement-by-requirement mapping: [README → Track requirement mapping](
 app/
   src/app/api/           Server API routes (Expo Router, output: server)
   src/server/
-    withLabGlitch.js     Fault injection + health recording. Every Layer 0
+    withLabGlitch.js     Fault injection + health recording. Every first-party
                          route passes through this. Defines FAULTABLE_PATHS.
     infraHealthStore.js  Per-path health state machine, D1-backed
     trafficLabStore.js   Fault state + auditable hit log
@@ -98,8 +99,8 @@ index when verifying that a claimed technology is genuinely wired in:
    unaffordable, and can never read its budget until it fails over.
 3. **Only fault paths that have a real sponsor wired.** Otherwise the UI shows
    "sponsor active" over a recovery that cannot happen.
-4. **`recordServiceHit` always records the TRUE Layer 0 outcome**, even when a
-   sponsor masks the failure from the caller — recovery counting depends on it.
+4. **`recordServiceHit` always records the TRUE first-party outcome**, even when
+   a sponsor masks the failure from the caller — recovery counting depends on it.
 5. **The agent's heartbeat stays quiet while the Traffic Simulator runs.**
    Beating on top of the workers crosses the hosting rate limit.
 6. **A hosting throttle (429) is never counted as a service failure.** It is a
@@ -138,7 +139,7 @@ Set the fault as above, then open https://mandate.expo.app → Mission Control a
 watch -n3 'curl -s https://mandate.expo.app/api/infra/status | head -c 600'
 ```
 
-Expected: `health` and `probe` move `layer0 → sponsor` on the agent's own
+Expected: `health` and `probe` move `first-party → sponsor` on the agent's own
 heartbeat (measured ~23s and ~28s on the deployed build), and Agent Chat shows
 the reasoning plus a real transaction hash.
 
@@ -182,7 +183,7 @@ Check before any funds move. A declined or failed check produces
 | `GET /api/infra/status` | Per-service health, mode, thresholds, sponsor, needsFailover |
 | `GET/POST /api/traffic/glitch` | Read / set the injected fault (`off`, `latency`, `error`, `timeout`) |
 | `GET /api/traffic/stats` | Server-side auditable hit log aggregate |
-| `GET /api/health` · `/api/traffic/probe` | Faultable Layer 0 services |
+| `GET /api/health` · `/api/traffic/probe` | Faultable first-party services |
 | `GET /api/treasury/balances` | Live on-chain balances (exempt from faults) |
 | `GET /api/vendor/reputation` | Reputation, subgraph-first |
 | `POST /api/infra/activate` · `/api/infra/recover` | Sponsor lifecycle |

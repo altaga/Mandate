@@ -18,10 +18,10 @@ import { queryD1, queryD1Async } from './d1Client.js';
 
 const TRACKED_PATHS = ['health', 'balances', 'reputation', 'catalog', 'reason', 'probe'];
 const WINDOW = 20;      // rolling window size for error rate calc
-const RECOVERY_N = 5;   // consecutive clean probes needed to return to Layer 0
+const RECOVERY_N = 5;   // consecutive clean probes needed to return to first-party
 
 const DEFAULT_STATE = {
-  mode: 'layer0', consecutive_errors: 0, sponsor: null, sponsor_cost: 0,
+  mode: 'first-party', consecutive_errors: 0, sponsor: null, sponsor_cost: 0,
   failover_at: null, total_sponsor_cost: 0, recovery_probes: 0,
   last_hit_at: 0, last_status: 0, last_latency_ms: 0,
 };
@@ -104,7 +104,7 @@ export async function markSponsorActive(path, sponsorName, costUsdc) {
 
 /**
  * Begin the recovery phase — watching for RECOVERY_N consecutive clean probes.
- * Called when the glitch is removed and Layer 0 starts responding again.
+ * Called when the glitch is removed and the first-party service starts responding again.
  */
 export async function startRecoveryMode(path) {
   await queryD1(
@@ -115,10 +115,10 @@ export async function startRecoveryMode(path) {
 }
 
 /**
- * Return to Layer 0 after recovery is confirmed.
+ * Return to first-party after recovery is confirmed.
  * Called by the agent when recoveryProbes >= RECOVERY_N.
  */
-export async function markLayer0Recovered(path) {
+export async function markFirstPartyRecovered(path) {
   const rows = await queryD1(
     'SELECT sponsor_cost, failover_at, total_sponsor_cost FROM infra_health_state WHERE path = ?',
     [path]
@@ -130,7 +130,7 @@ export async function markLayer0Recovered(path) {
 
   await queryD1(
     `UPDATE infra_health_state SET
-       total_sponsor_cost = ?, mode = 'layer0', sponsor = NULL, sponsor_cost = 0,
+       total_sponsor_cost = ?, mode = 'first-party', sponsor = NULL, sponsor_cost = 0,
        failover_at = NULL, recovery_probes = 0, consecutive_errors = 0
      WHERE path = ?`,
     [newTotal, path]
@@ -177,7 +177,7 @@ function computeHealth(path, svc, window) {
     lastLatencyMs: svc.last_latency_ms,
     fallbackSponsor: sponsorCfg.sponsor || null,
     fallbackCost: sponsorCfg.costUsdc || 0,
-    needsFailover: severity === 'critical' && svc.mode === 'layer0',
+    needsFailover: severity === 'critical' && svc.mode === 'first-party',
     needsRecovery: svc.mode === 'recovering' && svc.recovery_probes >= RECOVERY_N,
   };
 }
@@ -202,10 +202,10 @@ export async function getServiceHealth(path) {
  * dropping results for whichever path's queries lost that race: D1 itself
  * had the correct row (consecutive_errors, last_status all matching health
  * and balances exactly), but this endpoint kept reporting 'probe' stuck at
- * the DEFAULT_STATE fallback (0 errors, mode layer0) — meaning that path's
+ * the DEFAULT_STATE fallback (0 errors, mode first-party) — meaning that path's
  * queryD1() calls were resolving to null (network error/timeout under the
  * concurrent fan-out) far more often than the others, so it could accumulate
- * real consecutive errors on Layer 0 forever without ever crossing the
+ * real consecutive errors on the first-party service forever without ever crossing the
  * threshold this endpoint could see, and the agent never fails it over.
  * Two batched queries (all state rows, all window rows via a window
  * function for "last N per path") instead of twelve fixes the race by not

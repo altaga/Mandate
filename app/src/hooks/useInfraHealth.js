@@ -11,7 +11,7 @@
  *   → emits event via onRecoveryEvent callback
  *
  * Returns:
- *   services[]       — current health of all 5 Layer 0 services
+ *   services[]       — current health of all 5 first-party services
  *   overallStatus    — 'healthy' | 'degraded' | 'recovering'
  *   activeFailovers  — count of services on sponsor
  *   totalSponsorCost — cumulative USDC spent on sponsor fallbacks this session
@@ -106,7 +106,7 @@ export function useInfraHealth({ budget, budgetKnown, trafficRunning, onSpend, o
   }, [poll]);
 
   // The agent's own pulse, on its own schedule — this is what makes its
-  // awareness of Layer 0 independent of the Traffic Simulator. Chained
+  // awareness of the first-party services independent of the Traffic Simulator. Chained
   // (not setInterval) so a slow beat can never stack up on the next one.
   useEffect(() => {
     let alive = true;

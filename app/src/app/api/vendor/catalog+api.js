@@ -5,7 +5,7 @@
  * Public read endpoint for the vendor catalog (no private keys exposed).
  * Wrapped with withLabGlitch so degradation triggers the static offline fallback.
  *
- * When Layer 0 is healthy: returns full vendor list (free).
+ * When the first-party service is healthy: returns full vendor list (free).
  * When degraded:           agent serves STATIC_CATALOG_SAFE from vendors.js (free, local).
  */
 
@@ -16,7 +16,7 @@ export async function GET(request) {
   return withLabGlitch(request, 'catalog', async () => {
     return Response.json({
       ok: true,
-      source: 'layer0',
+      source: 'first-party',
       timestamp: new Date().toISOString(),
       vendors: STATIC_CATALOG_SAFE,
       count: STATIC_CATALOG_SAFE.length,

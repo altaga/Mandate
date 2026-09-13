@@ -44,7 +44,7 @@ export default function DemoChatScreen() {
   const handleFailoverEvent = useCallback((event) => {
     if (!event) return;
     const lines = [
-      `⚠ Layer 0 /${event.path} degraded — switching to ${event.sponsor || 'sponsor'}`,
+      `⚠ First-party /${event.path} degraded — switching to ${event.sponsor || 'sponsor'}`,
       ...(event.logs || []).map((l) => `  ${l}`),
       event.txHash ? `  Tx: ${event.txHash}` : null,
       event.type === 'FAILOVER_BLOCKED'
@@ -77,7 +77,7 @@ export default function DemoChatScreen() {
   const handleRecoveryEvent = useCallback((event) => {
     if (!event) return;
     const lines = [
-      `✓ Layer 0 /${event.path} recovered — returning to own server`,
+      `✓ First-party /${event.path} recovered — returning to own server`,
       event.reply,
     ].filter(Boolean);
     lines.forEach((text, i) => {
@@ -362,16 +362,16 @@ export default function DemoChatScreen() {
             <View style={styles.tabHeader}>
               <Text style={styles.tabTitle}>INFRASTRUCTURE SERVICES</Text>
               <Text style={styles.tabSubtitle}>
-                Layer 0 (own server) + Sponsor fallbacks — live state
+                First-party (own server) + Sponsor fallbacks — live state
               </Text>
             </View>
 
-            {/* Layer 0 health */}
-            <Text style={styles.sectionHeading}>LAYER 0 — OWN SERVER</Text>
+            {/* First-party health */}
+            <Text style={styles.sectionHeading}>FIRST-PARTY — OWN SERVER</Text>
             <View style={styles.vendorList}>
               {['health','balances','reputation','catalog','reason','probe'].map((path) => {
                 const svc = infraHealth.services.find((s) => s.path === path);
-                const isActive = svc?.mode === 'layer0' && svc?.severity === 'ok';
+                const isActive = svc?.mode === 'first-party' && svc?.severity === 'ok';
                 const isSponsor = svc?.mode === 'sponsor';
                 const isRecovering = svc?.mode === 'recovering';
                 const isDegraded = !isSponsor && !isRecovering && svc?.severity === 'critical';
@@ -427,8 +427,8 @@ export default function DemoChatScreen() {
                         <Text style={styles.vendorCost}>Handling: /{svc.path} — ${svc.sponsorCost} USDC/call</Text>
                         <Text style={styles.vendorDesc}>
                           {recovering
-                            ? `Layer 0 responding again — confirming ${svc.recoveryProbes}/${svc.recoveryNeeded} clean probes before returning`
-                            : 'Autonomous failover — Layer 0 degraded'}
+                            ? `First-party service responding again — confirming ${svc.recoveryProbes}/${svc.recoveryNeeded} clean probes before returning`
+                            : 'Autonomous failover — first-party service degraded'}
                         </Text>
                       </View>
                     );

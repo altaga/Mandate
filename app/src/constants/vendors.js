@@ -4,7 +4,7 @@
  * Used by agentService.js, vendor+api.js, reputation+api.js, catalog+api.js,
  * and infraFailoverService.js — no more scattered duplicates.
  *
- * LAYER 0 FALLBACK SPONSORS (real services with existing credentials):
+ * FIRST-PARTY FALLBACK SPONSORS (real services with existing credentials):
  *   - The Graph  → /api/vendor/reputation fallback (GRAPH_API_KEY in .env)
  *   - Arc RPC    → /api/treasury/balances fallback (ARC_RPC_URL in .env)
  *   - Local JS   → /api/agent/reason fallback (deterministic, no external call)
@@ -12,7 +12,7 @@
  */
 
 // ─── SPONSOR FALLBACK MAP ────────────────────────────────────────────────────
-// Which sponsor handles each Layer 0 path when it degrades.
+// Which sponsor handles each first-party path when it degrades.
 export const SPONSOR_MAP = {
   health: {
     sponsor: 'The Graph',

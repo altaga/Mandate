@@ -2,8 +2,8 @@
  * @file InfraStatusBar.js
  * @description Compact horizontal row of 5 service health dots for Mission Control.
  *
- * Each dot represents one Layer 0 service:
- *   green  = Layer 0 healthy
+ * Each dot represents one first-party service:
+ *   green  = first-party healthy
  *   yellow = SLOW (latency spike)
  *   red    = DEGRADED / CRITICAL (failover needed or in progress)
  *   blue   = Sponsor ACTIVE (paid fallback running)
@@ -109,7 +109,7 @@ export function InfraStatusBar({ services = [], totalSponsorCost = 0, overallSta
       <View style={styles.left}>
         <View style={[styles.overallDot, { backgroundColor: statusColor }]} />
         <Text style={[styles.overallLabel, { color: statusColor }]}>
-          LAYER 0
+          FIRST-PARTY
         </Text>
       </View>
 

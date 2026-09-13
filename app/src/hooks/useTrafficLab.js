@@ -73,7 +73,7 @@ export function useTrafficLab() {
     ].slice(0, RECENT_EVENTS);
 
     if (result.throttled) {
-      setError('Hosting rate limit reached (EAS free tier) — lower the worker count or intensity. Not a Layer 0 fault.');
+      setError('Hosting rate limit reached (EAS free tier) — lower the worker count or intensity. Not a first-party fault.');
     }
 
     setStats({
