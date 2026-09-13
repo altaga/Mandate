@@ -8,6 +8,32 @@ Existing agent wallets answer **how** an AI can pay. Mandate answers **when it i
 allowed to pay, who it may pay, what it must receive in return, and what happens
 when something goes wrong.**
 
+### The whole system, in one picture
+
+```mermaid
+graph LR
+  Human["👤 Human"]
+  World["🌍 World ID<br/>Selfie Check"]
+  Agent["🤖 Mandate Agent<br/>bounded USDC budget"]
+  Graph["🔷 The Graph<br/>who is safe to pay"]
+  Arc["🔶 Arc + USDC<br/>the payment itself"]
+  Service["✅ Service stays online"]
+
+  Human -->|"grants authority"| World
+  World -->|"proven human"| Agent
+  Graph -->|"on-chain reputation"| Agent
+  Agent -->|"pays a sponsor"| Arc
+  Arc --> Service
+  Agent -.->|"cost over its authority"| World
+
+  style Agent fill:#1e293b,stroke:#64748b,color:#e2e8f0
+```
+
+**Each sponsor carries one job no other piece can do.** World ID decides *who is
+allowed to grant authority*, The Graph decides *who is safe to pay*, and Arc is
+*the payment itself*. Remove any one and the loop stops working — the detail is
+in [Why the sponsors **are** the system](#why-the-sponsors-are-the-system).
+
 ---
 
 ## ⚡ FAST LINKS
