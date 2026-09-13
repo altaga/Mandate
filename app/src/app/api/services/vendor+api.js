@@ -1,7 +1,7 @@
 /**
  * @file vendor+api.js
  * @description Real x402 Payment Required Functional Microservices for Mandate.
- * Implements machine-to-machine HTTP 402 commerce for autonomous agents.
+ * Implements machine-to-machine x402 commerce for autonomous agents.
  */
 
 import Anthropic from "@anthropic-ai/sdk";

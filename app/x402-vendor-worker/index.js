@@ -193,7 +193,7 @@ async function runSearch(prompt) {
     query: (prompt || 'mandate infrastructure status').slice(0, 120),
     results: [
       { title: 'Arc Testnet status', snippet: 'RPC reachable from Cloudflare Worker edge.' },
-      { title: 'Mandate x402 settlement', snippet: 'HTTP 402 → Arc USDC pay → edge workload.' },
+      { title: 'Mandate x402 settlement', snippet: 'x402 challenge → Arc USDC pay → edge workload.' },
     ],
     engine: 'edge-local',
   };

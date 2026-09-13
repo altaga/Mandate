@@ -91,7 +91,7 @@ Right now it fails by returning `null`, which reads like *no match* rather than
 | [`app/src/app/api/payment/agent-pay+api.js`](app/src/app/api/payment/agent-pay+api.js) | The agent's real on-chain payment path |
 | [`app/src/app/api/treasury/grant+api.js`](app/src/app/api/treasury/grant+api.js) | Treasury → agent budget grant (real transfer) |
 | [`app/paymaster-worker/`](app/paymaster-worker) | Our own Paymaster for gas sponsorship |
-| [`app/x402-vendor-worker/`](app/x402-vendor-worker) | Deployed x402 vendor Workers (HTTP 402 → pay → serve) |
+| [`app/x402-vendor-worker/`](app/x402-vendor-worker) | Deployed x402 vendor Workers (x402 challenge → pay → serve) |
 | [`app/src/services/arcService.js`](app/src/services/arcService.js) | Balances, explorer URLs, payment entry points |
 | [`app/src/app/api/treasury/balances+api.js`](app/src/app/api/treasury/balances+api.js) | Arc RPC as a real sponsor fallback (`directRpc`) |
 

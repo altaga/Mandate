@@ -176,7 +176,7 @@ export const AgentService = {
         addLog({ time: ts(), text: `⚡ Initiating x402 handshake with ${vendor.name}...`, type: 'info' });
         const challenge = await this.invokeX402Service(vendorId);
         if (challenge.status === 402) {
-          addLog({ time: ts(), text: `💳 HTTP 402 Payment Required — ${vendor.cost} USDC`, type: 'warning' });
+          addLog({ time: ts(), text: `💳 x402 Payment Required — ${vendor.cost} USDC`, type: 'warning' });
           await delay(400);
         }
         addLog({ time: ts(), text: `Dispatching ERC-4337 UserOp on Arc Testnet...`, type: 'info' });
