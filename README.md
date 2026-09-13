@@ -64,8 +64,9 @@ decorative.
 
 ## What you are looking at
 
-The landing page at `mandate.expo.app` — onboarding on the left, and the same
-four-step chaos walkthrough this README expands on.
+The landing page at **[mandate.expo.app](https://mandate.expo.app)** —
+onboarding on the left, and the same four-step chaos walkthrough this README
+expands on.
 
 ![Landing](app/assets/screenshots/01-landing.png)
 
@@ -76,10 +77,10 @@ right panel injects real faults, the middle is the agent thinking out loud.
 
 **The signature moment.** The Fault Injector still reads `ERROR` — the
 first-party service is still broken — yet the traffic log has gone green,
-because the agent detected
-the outage, paid a sponsor on-chain, and rerouted through it. Note the agent's
-own reasoning in the middle, and that a hosting-plan throttle is labelled as
-such instead of being passed off as an infrastructure failure.
+because the agent detected the outage, paid a sponsor on-chain, and rerouted
+through it. Note the agent's own reasoning in the middle, and that a
+hosting-plan throttle is labelled as such instead of being passed off as an
+infrastructure failure.
 
 ![Failover in progress](app/assets/screenshots/04-traffic-glitch-failover.png)
 
@@ -464,7 +465,7 @@ browser tab looking busy forever.
 | Decision logic tied to real signals | Failover driven by measured error rate, consecutive errors and latency, plus live budget and on-chain reputation |
 | Autonomous spending / settlement in USDC | Real native-USDC ERC-4337 transfers: sponsor activation, vendor hiring, SLA refunds, treasury grants |
 | Paymaster / nanopayment flows | Our own Paymaster Worker sponsors gas; sponsor activation is a $0.00004 USDC per-call payment |
-| Functional MVP + architecture diagram | Live at `mandate.expo.app`; diagrams above |
+| Functional MVP + architecture diagram | Live at [mandate.expo.app](https://mandate.expo.app); diagrams above |
 | Video + detailed documentation | Demo videos + this README |
 | Effective use of Circle's developer tools | **Arc**, **USDC** and our **own deployed Paymaster** — product-by-product accounting in the [Arc section](#arc) |
 
@@ -475,7 +476,7 @@ browser tab looking busy forever.
 | Uses Selfie Check meaningfully | Two real gates: onboarding and the economic-authority escalation, both against the real verify API with anti-replay nullifiers |
 | Treated as a risk / eligibility / abuse-prevention signal | It is the boundary on autonomous spending — above its authority the agent halts and cannot proceed |
 | Feedback document | [Above](#world-feedback) |
-| Working app | `mandate.expo.app` |
+| Working app | [mandate.expo.app](https://mandate.expo.app) |
 
 ---
 
