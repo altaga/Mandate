@@ -255,28 +255,39 @@ $0.00004 USDC per call, paid on-chain.
 ```bash
 curl -X POST https://api.studio.thegraph.com/query/1758530/mandate-vendor-reputation/v0.0.4 \
   -H "Content-Type: application/json" \
-  -d '{"query":"{ vendorReputations(first:10){ id totalOps successCount successRate } }"}'
+  -d '{"query":"{ vendorReputations(first:5, orderBy:totalOps, orderDirection:desc){ id totalOps successCount failureCount successRate } }"}'
 ```
 
-At the time of writing that query returns real indexed rows — `503`, `72`, `11`
-operations against distinct vendor addresses — and the same values surface in
-`/api/vendor/reputation` as `reputationSource: "live_subgraph"` (the Graph
-oracle vendor is carrying 53 real on-chain samples).
-
-<!-- Screenshots below are placeholders: replace the PNG files in place,
-     keeping the same filenames, and these captions stay correct. -->
+The counts are live and keep climbing as the demo runs — the top vendor was at
+`2,220` indexed operations when the screenshot below was taken, so expect a
+larger number, not the same one. The same values surface in
+`/api/vendor/reputation` as `reputationSource: "live_subgraph"`.
 
 **The deployed subgraph in Subgraph Studio** — version, sync status, and the
 query URL this README points at.
 
 ![Subgraph Studio](app/assets/screenshots/07-thegraph-studio.png)
 
-**The same query in the playground**, returning real indexed reputation rows.
+**The same query in the playground**, returning real indexed reputation rows:
+
+```graphql
+{
+  vendorReputations(first: 5, orderBy: totalOps, orderDirection: desc) {
+    id
+    totalOps
+    successCount
+    failureCount
+    successRate
+  }
+}
+```
 
 ![Playground query](app/assets/screenshots/08-thegraph-playground.png)
 
-**The Network Gateway** behind the live liveness sponsor and the indexer-lag
-risk score.
+**The Network Gateway API key** behind the live liveness sponsor and the
+indexer-lag risk score. The `1.8K` queries and the GRT query fees on it are the
+agent's own traffic — every `health` call served by The Graph during an outage
+goes through this key.
 
 ![Network Gateway](app/assets/screenshots/09-thegraph-gateway.png)
 
